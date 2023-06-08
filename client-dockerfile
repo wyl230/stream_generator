@@ -1,0 +1,6 @@
+FROM ubuntu:22.04
+WORKDIR /client
+ADD  ./client /client
+ADD  ./receiver /client
+ADD  ./init.json /client
+CMD ./client

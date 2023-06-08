@@ -1,0 +1,14 @@
+{
+	"source_id" : 1,
+	"dest_id" : 21,
+	"package_num" : 100,
+	"package_speed" : 100, 
+    "control_address" : "127.0.0.1",
+    "client_address" : "127.0.0.1",
+    "control_port" : 9002,
+    "client_port" : 9001,
+    "server_port" : 9000,
+    "video_in" :8000,
+    "video_out" :3000,
+    "report_interval":1
+}

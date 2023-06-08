@@ -1,0 +1,20 @@
+apiVersion: apps/v1 #版本
+kind: Deployment #创建资源的类型
+metadata: #资源的元数据
+  name: pku-receiver #资源的名称，是元数据必填项
+  namespace: xw
+spec: #期望状态
+  replicas: 1 #创建的副本数量（pod数量），不填默认为1
+  selector: #选择器
+    matchLabels:
+      app: pku-receiver
+  template: #定义pod的模板
+    metadata: #pod的元数据
+      labels: #labels标签，必填一个
+        app: pku-receiver
+    spec: #pod的期望状态
+      containers: #容器
+      - name: pku-receiver #容器名称
+        image: pku-receiver:v1 #镜像
+        command: ["/receiver/receiver"]
+        args: ["192.168.0.181"]

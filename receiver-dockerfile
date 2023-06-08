@@ -1,0 +1,6 @@
+FROM ubuntu:22.04
+WORKDIR /receiver
+ADD  ./receiver /receiver
+# chmod +x ./receiver
+ADD  ./init.json /receiver
+CMD ./receiver

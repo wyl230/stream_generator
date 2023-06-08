@@ -1,0 +1,6 @@
+FROM ubuntu:22.04
+WORKDIR /server
+ADD  ./server /server
+ADD ./sender /server
+ADD  ./init.json /server
+CMD ./server
