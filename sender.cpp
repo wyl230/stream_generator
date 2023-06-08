@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <random>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
@@ -63,7 +64,8 @@ int package_size = 2048, package_speed, delay, report_interval;
 long package_num;
 int client_port, video_in;
 bool auto_send = false;
-int control_port, server_port;//client:接入网 server：本pod接收程序 control；控制程序
+int send_type = 0; // 1 恒比特 2 变比特 
+int control_port, server_port;// client:接入网 server：本pod接收程序 control；控制程序
 char datagram[2048];
 my_package pack;
 string client_address;
@@ -79,7 +81,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
   client_address = inet_ntoa(*(struct in_addr *)host->h_addr_list[0]);
-   cout << "client address:"<<client_address << endl;
+  cout << "client address:"<<client_address << endl;
   cout << server_port << endl;
   sleep(1);
   cout << "接收开始" << endl;
@@ -107,6 +109,7 @@ void client_init() {
   report_interval = j["report_interval"];
   video_in = j["video_in"];
   auto_send = j["auto_send"];
+  send_type = j["type"];
   srcFile.close();
   return;
 }
@@ -150,10 +153,22 @@ int recv_thread(int port, int package_size) {
   data_generate(package_head);
   while (true) {    
     //接收视频流
-    readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-    // readLen = 1230;
-    // memset(buffer, 1, 1230);
-    strcat(package_head,buffer);
+    if(send_type == 1) { // 恒比特流
+      readLen = 1230;
+      memset(buffer, 1, 1230);
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000 / package_speed));
+    } else if(send_type == 2) { // 变比特流
+      std::random_device rd;  //如果可用的话，从一个随机数发生器上获得一个真正的随机数
+      std::mt19937 gen(rd()); //gen是一个使用rd()作种子初始化的标准梅森旋转算法的随机数发生器
+      std::uniform_int_distribution<> distrib(1000/package_speed / 2, 1000/package_speed * 3 / 2);
+      int delay_ms = distrib(gen);
+      readLen = 1230;
+      memset(buffer, 1, 1230);
+      std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+    } else { // 接受真正的视频流
+      readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+    }
+    strcat(package_head,buffer); // something wrong
     for(int i = 0; i < sizeof(buffer); ++i) {
       package_head[i + sizeof(my_package)] = buffer[i];
     }
@@ -169,11 +184,9 @@ int recv_thread(int port, int package_size) {
     std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
     std::cout << "timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
 
-    sendto(my_socket, package_head, readLen+sizeof(my_package), 0,
-                   (sockaddr *)&target_addr, sizeof(target_addr));
+    sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
     clock_gettime(CLOCK_MONOTONIC, &delay_a);
-    if(delay_a.tv_sec-delay_c.tv_sec > 1)
-    {
+    if(delay_a.tv_sec-delay_c.tv_sec > 1) {
       static int cnt = 0;
       cout<< "sending " << cnt++ << endl;
       delay_c = delay_a;
