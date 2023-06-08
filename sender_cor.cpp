@@ -1,4 +1,3 @@
-// sender中打上时间戳
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -18,8 +17,6 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
-#include <chrono>
-#include <ctime>
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -151,32 +148,19 @@ int recv_thread(int port, int package_size) {
   while (true) {    
     //接收视频流
     readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-    // readLen = 1230;
-    // memset(buffer, 1, 1230);
-    strcat(package_head,buffer);
+    /* strcat(package_head,buffer); */
     for(int i = 0; i < sizeof(buffer); ++i) {
       package_head[i + sizeof(my_package)] = buffer[i];
     }
     //转发视频流
-
-    // package_head
-    // 加上时间戳
-    my_package* ptr = reinterpret_cast<my_package*>(package_head);  // 将其强制转换为my_package指针类型
-    timespec now = {};  // 生成新的 timestamp
-    clock_gettime(CLOCK_REALTIME, &now);
-    ptr->timestamp = now;  // 将 timestamp 赋值为新的值
-
-    std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
-    std::cout << "timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
-
     sendto(my_socket, package_head, readLen+sizeof(my_package), 0,
                    (sockaddr *)&target_addr, sizeof(target_addr));
     clock_gettime(CLOCK_MONOTONIC, &delay_a);
-    if(delay_a.tv_sec-delay_c.tv_sec > 1)
+    /* cout<<"readLen"<< readLen << endl; */
+    if(delay_a.tv_sec-delay_c.tv_sec>1)
     {
-      static int cnt = 0;
-      cout<< "sending " << cnt++ << endl;
-      delay_c = delay_a;
+      cout<<"sending"<<endl;
+      delay_c=delay_a;
     }
   }
   return 0;
@@ -185,7 +169,9 @@ int recv_thread(int port, int package_size) {
 void data_generate(char *package_head)
 {
   my_package *temp=(my_package *)package_head;
+  /* memset(temp, 1, sizeof(my_package)); */
   temp->source_user_id = pack.source_user_id;
   temp->dest_user_id = pack.dest_user_id;
   return;
 }
+

@@ -156,7 +156,7 @@ int send_thread(int port, long package_num, int delay, int packageSize) {
   uint32_t cnt_package = 0,recent_package = 0;
   uint32_t total_delay;
   timespec delay_a, delay_b,delay_c;
-  uint32_t max_delay=0,min_delay=INT_MAX,avg_delay=0, recent_delay=0,avg_speed=0;
+  uint32_t max_delay = 0, min_delay = INT_MAX, avg_delay = 0, recent_delay = 0,avg_speed = 0;
   delay_a = {0, 0};
   delay_b = {0, 0};
   delay_c = {0, 0};
@@ -169,6 +169,10 @@ int send_thread(int port, long package_num, int delay, int packageSize) {
     readLen = recvfrom(recv_socket, buffer, package_size+sizeof(my_package), 0, (sockaddr *)&sender_addr, &sender_addrLen);
 
     recent_bytes += readLen - sizeof(my_package);
+
+    for(int i=0;i<readLen-sizeof(my_package);i++) {
+      datagram[i]=buffer[i+sizeof(my_package)];
+    }
 
     // 从buffer中读取时间戳
     my_package* ptr = reinterpret_cast<my_package*>(buffer); 
@@ -194,7 +198,7 @@ int send_thread(int port, long package_num, int delay, int packageSize) {
 
     cout << "delays: " << max_delay << " | " << min_delay << endl;
 
-    strncpy(datagram, buffer + sizeof(my_package), readLen - sizeof(my_package));
+    // strncpy(datagram, buffer + sizeof(my_package), readLen - sizeof(my_package));
     error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
     if (error == -1) {
       perror("sendto");
