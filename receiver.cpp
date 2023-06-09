@@ -248,6 +248,7 @@ void data_generate(my_package *pack) {
 
 
 void report_delay(uint32_t max_delay,uint32_t min_delay,uint32_t avg_delay,uint32_t avg_speed)
+// 这里每0.5秒报告一次，报告消息为 json格式 
 {
   //消息准备
   char data[32];

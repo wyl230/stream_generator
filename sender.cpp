@@ -153,18 +153,20 @@ int recv_thread(int port, int package_size) {
   delay_c = {0, 0};
   data_generate(package_head);
   while (true) {    
-    //接收视频流
+    // 音频：160Byte 20ms 模拟的是G.711 64kbps音频流 package_speed = 50
+    // 视频：1200Byte 3-6ms 模拟的是 H.264 1080p 30fps的视频流
     if(send_type == 1) { // 恒比特流
-      readLen = 1230;
+      readLen = 160;
       memset(buffer, 1, 1230);
       std::this_thread::sleep_for(std::chrono::milliseconds(1000 / package_speed));
     } else if(send_type == 2) { // 变比特流
       std::random_device rd;  //如果可用的话，从一个随机数发生器上获得一个真正的随机数
       std::mt19937 gen(rd()); //gen是一个使用rd()作种子初始化的标准梅森旋转算法的随机数发生器
-      std::uniform_int_distribution<> distrib(1000/package_speed / 2, 1000/package_speed * 3 / 2);
+      std::uniform_int_distribution<> distrib(3, 6);
+      // std::uniform_int_distribution<> distrib(1000/package_speed / 2, 1000/package_speed * 3 / 2);
       int delay_ms = distrib(gen);
-      readLen = 1230;
-      memset(buffer, 1, 1230);
+      readLen = 1200;
+      memset(buffer, 1, 1200);
       std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
     } else { // 接受真正的视频流
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
