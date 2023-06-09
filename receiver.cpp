@@ -48,10 +48,9 @@ struct control_message {
   uint32_t  min_delay;
   uint32_t  avg_delay;
   uint32_t  avg_speed=0;
-  uint32_t  unused2=0;
+  uint32_t  insId=0;
   uint32_t  unused3=0;
 };
-
 
 int send_thread(int port, long package_num, int delay, int packageSize);  // 发送线程，需要指定端口和发送包数
 int recv_thread(int port, int package_size);
@@ -74,10 +73,11 @@ long long int recent_bytes = 0;
 
 int main(int argc, char *argv[]) {
   server_init();
-  cout << "please input client_address & control_address" << endl;
+  // cout << "please input client_address & control_address" << endl;
   client_address = argv[1];
   control_address = argv[2];
   cout << client_address << endl;
+
   // client address 
   struct hostent *client_host;
   client_host = gethostbyname(client_address.c_str());
@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
   }
   client_address = inet_ntoa(*(struct in_addr *)client_host->h_addr_list[0]);
   cout << "client" << client_address << endl;
+
   // control address
   struct hostent *control_host;
   control_host = gethostbyname(client_address.c_str());
@@ -96,7 +97,6 @@ int main(int argc, char *argv[]) {
   }
   client_address = inet_ntoa(*(struct in_addr *)control_host->h_addr_list[0]);
   cout << "control: " << control_address << endl;
-  // end
 
   cout << "server port" << server_port << endl;
   delay = 1e9 / package_speed;
@@ -128,6 +128,7 @@ void server_init() {
   srcFile.close();
   return;
 }
+
 int send_thread(int port, long package_num, int delay, int packageSize) {
   // 初始化socket
   int my_socket;
@@ -170,8 +171,8 @@ int send_thread(int port, long package_num, int delay, int packageSize) {
 
     recent_bytes += readLen - sizeof(my_package);
 
-    for(int i=0;i<readLen-sizeof(my_package);i++) {
-      datagram[i]=buffer[i+sizeof(my_package)];
+    for(int i = 0;i < readLen - sizeof(my_package); i++) {
+      datagram[i] = buffer[i + sizeof(my_package)];
     }
 
     // 从buffer中读取时间戳

@@ -9,8 +9,9 @@
   "client_port": 9000,
   "server_port": 9000,
   "video_in": 8000,
-  "video_out": 23023,
+  "video_out": 3000,
   "report_interval": 1,
   "auto_send": true,
-  "type": 1
+  "type": 3,
+  "flow_id": 1
 }

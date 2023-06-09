@@ -101,6 +101,7 @@ void client_init() {
   srcFile >> j;
   pack.source_user_id = j["source_id"];
   pack.dest_user_id = j["dest_id"];
+  pack.flow_id = j["flow_id"];
   package_num = j["package_num"];
   package_speed = j["package_speed"];
   control_port = j["control_port"];
