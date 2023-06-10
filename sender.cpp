@@ -32,6 +32,7 @@ using json = nlohmann::json;
 #define INT_MAX 99999999
 //#define RECEIVER_ADDRESS "172.17.0.55" // 目的地址
 bool print_log = true;
+int print_cnt = 0;
 
 struct my_package {
   uint32_t tunnel_id;
@@ -190,8 +191,8 @@ int recv_thread(int port, int package_size) {
 
 
     std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
-    if(print_log) {
-      std::cout << "timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
+    if(print_log && print_cnt++ % 100 == 0) {
+      std::cout << print_cnt << " timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
     }
 
     sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
