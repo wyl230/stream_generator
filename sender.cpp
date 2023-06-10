@@ -31,6 +31,7 @@ using json = nlohmann::json;
 #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
 #define INT_MAX 99999999
 //#define RECEIVER_ADDRESS "172.17.0.55" // 目的地址
+bool print_log = true;
 
 struct my_package {
   uint32_t tunnel_id;
@@ -160,8 +161,8 @@ int recv_thread(int port, int package_size) {
       memset(buffer, 1, 1230);
       std::this_thread::sleep_for(std::chrono::milliseconds(1000 / package_speed));
     } else if(send_type == 2) { // 变比特流
-      std::random_device rd;  //如果可用的话，从一个随机数发生器上获得一个真正的随机数
-      std::mt19937 gen(rd()); //gen是一个使用rd()作种子初始化的标准梅森旋转算法的随机数发生器
+      std::random_device rd;  
+      std::mt19937 gen(rd()); 
       std::uniform_int_distribution<> distrib(3, 6);
       // std::uniform_int_distribution<> distrib(1000/package_speed / 2, 1000/package_speed * 3 / 2);
       int delay_ms = distrib(gen);
@@ -170,10 +171,10 @@ int recv_thread(int port, int package_size) {
       std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
     } else { // 接受真正的视频流
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-    }
-    strcat(package_head,buffer); // something wrong
-    for(int i = 0; i < sizeof(buffer); ++i) {
-      package_head[i + sizeof(my_package)] = buffer[i];
+      strcat(package_head,buffer); // something wrong
+      for(int i = 0; i < sizeof(buffer); ++i) {
+        package_head[i + sizeof(my_package)] = buffer[i];
+      }
     }
     //转发视频流
 
@@ -183,9 +184,15 @@ int recv_thread(int port, int package_size) {
     timespec now = {};  // 生成新的 timestamp
     clock_gettime(CLOCK_REALTIME, &now);
     ptr->timestamp = now;  // 将 timestamp 赋值为新的值
+    ptr->source_user_id = pack.source_user_id;
+    ptr->dest_user_id = pack.dest_user_id;
+    ptr->flow_id = pack.flow_id;
+
 
     std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
-    std::cout << "timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
+    if(print_log) {
+      std::cout << "timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
+    }
 
     sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
     clock_gettime(CLOCK_MONOTONIC, &delay_a);

@@ -12,6 +12,6 @@
   "video_out": 3000,
   "report_interval": 1,
   "auto_send": true,
-  "type": 3,
+  "type": 1,
   "flow_id": 1
 }

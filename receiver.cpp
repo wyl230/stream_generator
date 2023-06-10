@@ -200,6 +200,7 @@ int send_thread(int port, long package_num, int delay, int packageSize) {
     cout << "delays: " << max_delay << " | " << min_delay << endl;
 
     // strncpy(datagram, buffer + sizeof(my_package), readLen - sizeof(my_package));
+    // 发送给VLC
     error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
     if (error == -1) {
       perror("sendto");
