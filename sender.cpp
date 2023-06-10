@@ -58,6 +58,7 @@ struct control_message {
   uint32_t  unused3=0;
 };
 
+uint32_t global_packet_id = 0;
 int recv_thread(int port, int package_size);
 void client_init();
 
@@ -188,6 +189,7 @@ int recv_thread(int port, int package_size) {
     ptr->source_user_id = pack.source_user_id;
     ptr->dest_user_id = pack.dest_user_id;
     ptr->flow_id = pack.flow_id;
+    ptr->packet_id = global_packet_id++;
 
 
     std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);

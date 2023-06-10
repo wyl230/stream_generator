@@ -59,8 +59,28 @@ struct msg_for_each_stream {
   uint32_t max_delay;
   uint32_t min_delay;
   uint32_t loss_rate;
+  uint32_t max_packet_id;
+  uint32_t total_packet_num;
   timespec last_min_max_delay_record;
 };
+
+
+string generateRandomString()
+{
+    const int length = 64;
+    const string letters = "0123456789"
+                           "abcdefghijklmnopqrstuvwxyz"
+                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                           "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+    srand(time(NULL));
+    string result;
+    for (int i = 0; i < length; i++) {
+        result += letters[rand() % letters.length()];
+    }
+    return result;
+}
+
+string receiver_id = generateRandomString();
 
 class Receiver {
 public:
@@ -223,16 +243,18 @@ public:
 
       uint32_t delay_us = time_diff / 1000;
 
-      if(flow_msg.count(ptr->flow_id) && get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) < 1e9) {
+      if(flow_msg.count(ptr->flow_id)) {
         auto &msg = flow_msg[ptr->flow_id];
-        msg.packet_num++;
-        msg.sum_delay += delay_us;
-        msg.max_delay = max(delay_us, msg.max_delay);
-        msg.min_delay = min(delay_us, msg.min_delay);
-        msg.byte_num += readLen; // 算上包头
-
-        // double time_diff_ms = get_time_diff(msg.last_min_max_delay_record, now) / 1000000;
-        // cout << "time_diff_ms record: " << time_diff_ms << endl;
+        if(get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) < 1e9) {
+          msg.packet_num++;
+          msg.sum_delay += delay_us;
+          msg.max_delay = max(delay_us, msg.max_delay);
+          msg.min_delay = min(delay_us, msg.min_delay);
+          msg.byte_num += readLen - sizeof(my_package); // no 包头
+        } 
+        msg.max_packet_id = max(msg.max_packet_id, ptr->packet_id);
+        cout << msg.max_packet_id << "???" << endl;
+        msg.total_packet_num++;
       } else {
         msg_for_each_stream msg;
         msg.packet_num = 1;
@@ -240,6 +262,8 @@ public:
         msg.max_delay = delay_us;
         msg.min_delay = delay_us;
         msg.byte_num = readLen; // 算上包头
+        msg.max_packet_id = ptr->packet_id;
+        msg.total_packet_num = 1;
         clock_gettime(CLOCK_REALTIME, &msg.last_min_max_delay_record);
 
         flow_msg[ptr->flow_id] = msg;
@@ -300,7 +324,10 @@ public:
         {"max_delay", value.max_delay},
         {"min_delay", value.min_delay},
         {"loss_rate", value.loss_rate},
-        {"last_min_max_delay_record", value.last_min_max_delay_record.tv_sec}
+        {"last_min_max_delay_record", value.last_min_max_delay_record.tv_sec},
+        {"max_packet_id", value.max_packet_id},
+        {"total_packet_num", value.total_packet_num},
+        {"pod_id", receiver_id}
       };
       j[to_string(key)] = j2;
     }
