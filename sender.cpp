@@ -77,6 +77,7 @@ string client_address;
 int main(int argc, char *argv[]) {
   client_init();
   client_address = argv[1];
+  global_packet_id = stoi(string(argv[2]));
   cout << "client address:" << client_address << endl;
   struct hostent *host;
   host = gethostbyname(client_address.c_str());
