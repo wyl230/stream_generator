@@ -267,6 +267,42 @@ public:
         flow_msg[ptr->flow_id] = msg;
       }
 
+
+      if(!flow_msg.count(ptr->flow_id)) { // 没有，则初始化
+        msg_for_each_stream msg;
+        msg.packet_num = 1;
+        msg.sum_delay = delay_us;
+        msg.max_delay = delay_us;
+        msg.min_delay = delay_us;
+        msg.byte_num = readLen; // 算上包头
+        msg.max_packet_id = ptr->packet_id;
+        msg.total_packet_num = 1;
+        clock_gettime(CLOCK_REALTIME, &msg.last_min_max_delay_record);
+        flow_msg[ptr->flow_id] = msg;
+      } else { // 有了，则更新
+        auto &msg = flow_msg[ptr->flow_id];
+        msg.packet_num++;
+        msg.sum_delay += delay_us;
+        msg.max_delay = max(delay_us, msg.max_delay);
+        msg.min_delay = min(delay_us, msg.min_delay);
+        msg.byte_num += readLen - sizeof(my_package); // no 包头
+        msg.max_packet_id = max(msg.max_packet_id, ptr->packet_id);
+        cout << msg.max_packet_id << "???" << endl;
+        msg.total_packet_num++;
+      }
+
+      if(flow_msg.count(ptr->flow_id) && get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) > 1e9) {
+        // 超过一定时间了，除去最大id和包总数，全部初始化
+        msg_for_each_stream msg;
+        msg.packet_num = 1;
+        msg.sum_delay = delay_us;
+        msg.max_delay = delay_us;
+        msg.min_delay = delay_us;
+        msg.total_packet_num = 1;
+        clock_gettime(CLOCK_REALTIME, &msg.last_min_max_delay_record);
+        flow_msg[ptr->flow_id] = msg;
+      }
+
       auto &msg = flow_msg[ptr->flow_id];
       cout << "now: delays: " << msg.max_delay << " | " << msg.min_delay << '|' << msg.byte_num << '|' << msg.packet_num << endl;
 

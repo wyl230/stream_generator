@@ -77,7 +77,12 @@ string client_address;
 int main(int argc, char *argv[]) {
   client_init();
   client_address = argv[1];
-  global_packet_id = stoi(string(argv[2]));
+  /* global_packet_id = stoi(string(argv[2])); */
+  /* global_packet_id = stoi(string(argv[2])); */
+  std::ifstream ifs("packet_id.json");
+  json jf = json::parse(ifs);
+  global_packet_id = jf[to_string(pack.flow_id).c_str()];
+
   cout << "client address:" << client_address << endl;
   struct hostent *host;
   host = gethostbyname(client_address.c_str());
@@ -208,6 +213,18 @@ int recv_thread(int port, int package_size) {
     } else {
       sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
     }
+    // 写入packet_id到文件中 json格式 [id: packet_id]
+    //
+    //
+
+    std::ifstream ifs("packet_id.json");
+    json jf = json::parse(ifs);
+    
+    jf[to_string(pack.flow_id).c_str()] = global_packet_id;
+    std::ofstream file("packet_id.json");
+    file << jf;
+
+    //
     clock_gettime(CLOCK_MONOTONIC, &delay_a);
     if(delay_a.tv_sec-delay_c.tv_sec > 1) {
       static int cnt = 0;
