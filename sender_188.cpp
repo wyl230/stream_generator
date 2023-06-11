@@ -144,7 +144,7 @@ int recv_thread(int port, int package_size) {
   bind(my_socket, (sockaddr *)&my_addr, sizeof(my_addr));
   // 指定目标
   target_addr.sin_family = AF_INET;
-  target_addr.sin_port = htons(client_port);
+  target_addr.sin_port = htons(31539);
   target_addr.sin_addr.s_addr = inet_addr(client_address.c_str());
 
   // 接收准备

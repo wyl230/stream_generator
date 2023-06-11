@@ -225,8 +225,6 @@ public:
       cout << ptr->timestamp.tv_sec << "." << ptr->timestamp.tv_nsec << endl;
       cout << ptr->ext_flag << endl;
 
-
-
       std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
       std::cout << "timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
 
