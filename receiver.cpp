@@ -376,7 +376,7 @@ public:
         {"max_packet_id", value.max_packet_id},
         {"total_packet_num", value.total_packet_num},
         {"pod_id", receiver_id},
-        packet_id_list_json
+        {"id_list", packet_id_list_json}
       };
       j[to_string(key)] = j2;
     }
