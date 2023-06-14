@@ -219,15 +219,14 @@ public:
       // 从buffer中读取时间戳
       my_package* ptr = reinterpret_cast<my_package*>(buffer); 
 
-      cout << ptr->tunnel_id << endl;
-      cout << ptr->source_module_id << endl;
-      cout << ptr->source_user_id << endl;
-      cout << ptr->dest_user_id << endl;
-      cout << ptr->flow_id << endl;
-      cout << ptr->service_id << endl;
-      cout << ptr->qos_id << endl;
-      cout << ptr->packet_id << endl;
-      cout << ptr->timestamp.tv_sec << "." << ptr->timestamp.tv_nsec << endl;
+      cout << "head: " << ptr->tunnel_id << " " << ptr->source_module_id << " ";
+      cout << ptr->source_user_id << " ";
+      cout << ptr->dest_user_id << " ";
+      cout << ptr->flow_id << " ";
+      cout << ptr->service_id << " ";
+      cout << ptr->qos_id << " ";
+      cout << ptr->packet_id << " ";
+      cout << ptr->timestamp.tv_sec << "." << ptr->timestamp.tv_nsec << " ";
       cout << ptr->ext_flag << endl;
 
       std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
@@ -256,7 +255,7 @@ public:
           msg.byte_num += readLen - sizeof(my_package); // no 包头
         } 
         msg.max_packet_id = max(msg.max_packet_id, ptr->packet_id);
-        cout << msg.max_packet_id << "???" << endl;
+        // cout << msg.max_packet_id << "???" << endl;
         msg.total_packet_num++;
       } else {
         msg_for_each_stream msg;
