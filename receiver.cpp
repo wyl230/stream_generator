@@ -19,6 +19,8 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <vector>
+#include <queue>
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -27,6 +29,9 @@
 using namespace std;
 using json = nlohmann::json;
 #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
+
+const int max_num_of_packet_id_allowed = 5000;
+int cur_num_of_packet_id_allowed = 0;
 
 struct my_package {
   uint32_t tunnel_id;
@@ -62,22 +67,22 @@ struct msg_for_each_stream {
   uint32_t max_packet_id;
   uint32_t total_packet_num;
   timespec last_min_max_delay_record;
+  queue<uint32_t> recent_packet_id;
 };
 
 
-string generateRandomString()
-{
-    const int length = 64;
-    const string letters = "0123456789"
-                           "abcdefghijklmnopqrstuvwxyz"
-                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                           "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
-    srand(time(NULL));
-    string result;
-    for (int i = 0; i < length; i++) {
-        result += letters[rand() % letters.length()];
-    }
-    return result;
+string generateRandomString() {
+  const int length = 64;
+  const string letters = "0123456789"
+                          "abcdefghijklmnopqrstuvwxyz"
+                          "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                          "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+  srand(time(NULL));
+  string result;
+  for (int i = 0; i < length; i++) {
+      result += letters[rand() % letters.length()];
+  }
+  return result;
 }
 
 string receiver_id = generateRandomString();
@@ -177,7 +182,7 @@ public:
     sockaddr_in target_addr;
     target_addr.sin_family = AF_INET;
     target_addr.sin_port = htons(port);
-    target_addr.sin_addr.s_addr = inet_addr(client_address.c_str());
+    target_addr.sin_addr.s_addr = inet_addr(address.c_str());
     return target_addr;
   }
 
@@ -267,8 +272,10 @@ public:
         flow_msg[ptr->flow_id] = msg;
       }
 
+      bool not_init_msg = false;
 
       if(!flow_msg.count(ptr->flow_id)) { // 没有，则初始化
+        not_init_msg = true;
         msg_for_each_stream msg;
         msg.packet_num = 1;
         msg.sum_delay = delay_us;
@@ -291,6 +298,21 @@ public:
         msg.total_packet_num++;
       }
 
+      cur_num_of_packet_id_allowed++; // 如果超过了，就缩减10% 
+      // 添加id序列
+      auto &msg = flow_msg[ptr->flow_id];
+      msg.recent_packet_id.push(ptr->packet_id);
+      if(cur_num_of_packet_id_allowed > 
+      max_num_of_packet_id_allowed) {
+        auto pop_num = msg.recent_packet_id.size() / 10;
+        pop_num = pop_num >= 3 ? pop_num : 0; // 
+        for(auto i = 0; i < pop_num; ++i) {
+          msg.recent_packet_id.pop();
+        }
+        cur_num_of_packet_id_allowed -= pop_num;
+      }
+
+
       if(flow_msg.count(ptr->flow_id) && get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) > 1e9) {
         // 超过一定时间了，除去最大id和包总数，全部初始化
         msg_for_each_stream msg;
@@ -303,7 +325,6 @@ public:
         flow_msg[ptr->flow_id] = msg;
       }
 
-      auto &msg = flow_msg[ptr->flow_id];
       cout << "now: delays: " << msg.max_delay << " | " << msg.min_delay << '|' << msg.byte_num << '|' << msg.packet_num << endl;
 
       // strncpy(datagram, buffer + sizeof(my_package), readLen - sizeof(my_package));
@@ -331,26 +352,19 @@ public:
   }
 
   void report_delay()
-  // 这里每0.5秒报告一次，报告消息为 json格式 
   {
     //发送准备
-    int my_socket;
-    sockaddr_in target_addr, my_addr;
-    my_socket = socket(AF_INET, SOCK_DGRAM, 0);
-    my_addr.sin_family = AF_INET;
-    my_addr.sin_port = htons(2222);
-    my_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
-    // 绑定端口
-    bind(my_socket, (sockaddr *)&my_addr, sizeof(my_addr));
-    // 指定目标
-    target_addr.sin_family = AF_INET;
-    target_addr.sin_port = htons(control_port);
-    target_addr.sin_addr.s_addr = inet_addr(control_address.c_str());
-
     json j;
     for(auto it = flow_msg.begin(); it != flow_msg.end(); ++it) {
       int key = it->first;
       msg_for_each_stream value = it->second;
+      auto id_queue = value.recent_packet_id;
+      json packet_id_list_json;
+      while (!id_queue.empty()) {
+          packet_id_list_json.push_back(id_queue.front());
+          id_queue.pop();
+      }
+
       json j2 = {
         {"packet_num", value.packet_num},
         {"byte_num", value.byte_num},
@@ -361,7 +375,8 @@ public:
         {"last_min_max_delay_record", value.last_min_max_delay_record.tv_sec},
         {"max_packet_id", value.max_packet_id},
         {"total_packet_num", value.total_packet_num},
-        {"pod_id", receiver_id}
+        {"pod_id", receiver_id},
+        packet_id_list_json
       };
       j[to_string(key)] = j2;
     }
@@ -369,6 +384,8 @@ public:
     // cout << j.dump(4) << endl;
     string message = j.dump();
 
+    auto my_socket = get_init_socket("0.0.0.0", 2222);
+    auto target_addr = get_sockaddr_in(control_address, control_port);
     sendto(my_socket, message.c_str(), message.length(), 0, (sockaddr *)&target_addr, sizeof(target_addr));
   }
 
