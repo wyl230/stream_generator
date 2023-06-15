@@ -112,6 +112,7 @@ void client_init() {
   json j;
   srcFile >> j;
   pack.source_user_id = j["source_id"];
+  pack.source_module_id = j["source_module_id"];
   pack.dest_user_id = j["dest_id"];
   pack.flow_id = j["flow_id"];
   package_num = j["package_num"];
@@ -206,6 +207,7 @@ int recv_thread(int port, int package_size) {
     clock_gettime(CLOCK_REALTIME, &now);
     ptr->timestamp = now;  // 将 timestamp 赋值为新的值
     ptr->source_user_id = pack.source_user_id;
+    ptr->source_module_id = pack.source_module_id;
     ptr->dest_user_id = pack.dest_user_id;
     ptr->flow_id = pack.flow_id;
     ptr->packet_id = global_packet_id++;
@@ -248,5 +250,6 @@ void data_generate(char *package_head)
   my_package *temp=(my_package *)package_head;
   temp->source_user_id = pack.source_user_id;
   temp->dest_user_id = pack.dest_user_id;
+  temp->source_module_id = pack.source_module_id;
   return;
 }
