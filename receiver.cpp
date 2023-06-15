@@ -102,6 +102,8 @@ public:
   string control_address;  // 初始发送参数，在程序开始时指定
   char datagram[2048];
   my_package pack;
+  string duplex_server_address, duplex_client_address;
+  int duplex_server_port, duplex_client_port;
 
 
   map<int, msg_for_each_stream> flow_msg;
@@ -125,6 +127,7 @@ public:
     json j;
     srcFile >> j;
     pack.source_user_id = j["source_id"];
+    pack.source_module_id = j["source_module_id"];
     pack.dest_user_id = j["dest_id"];
     package_num = j["package_num"];
     package_speed = j["package_speed"];
@@ -132,6 +135,12 @@ public:
     server_port = j["server_port"];
     report_interval = j["report_interval"];
     video_out = j["video_out"];
+
+    duplex_client_address = j["duplex_client_address"];
+    duplex_server_address = j["duplex_server_address"];
+    duplex_client_port = j["duplex_client_port"];
+    duplex_server_port = j["duplex_server_port"];
+    
     srcFile.close();
     return;
   }
@@ -141,6 +150,7 @@ public:
     char *data = datagram;
     my_package *temp = (my_package *)data;
     temp->source_user_id = pack.source_user_id;
+    temp->source_module_id = pack.source_module_id;
     temp->dest_user_id = pack.dest_user_id;
     return;
   }
@@ -221,6 +231,7 @@ public:
 
       cout << "head: " << ptr->tunnel_id << " " << ptr->source_module_id << " ";
       cout << ptr->source_user_id << " ";
+      cout << ptr->source_module_id << " ";
       cout << ptr->dest_user_id << " ";
       cout << ptr->flow_id << " ";
       cout << ptr->service_id << " ";
@@ -334,6 +345,16 @@ public:
           perror("sendto");
           cout <<"sendto() error occurred at package "<< endl;
         }
+      }
+
+      if(ptr->source_module_id == 100) {
+        // 客户端发送给服务器
+        auto target_addr = get_sockaddr_in(duplex_server_address, duplex_server_port);
+        sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+      } else if(ptr->source_module_id == 200) {
+        // 服务器发送给客户端
+        auto target_addr = get_sockaddr_in(duplex_client_address, duplex_client_port);
+        sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
       }
       clock_gettime(CLOCK_MONOTONIC, &delay_a);
 

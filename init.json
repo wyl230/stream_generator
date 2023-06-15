@@ -13,5 +13,9 @@
   "report_interval": 1,
   "auto_send": true,
   "type": 1,
-  "flow_id": 1
+  "flow_id": 1,
+  "duplex_client_address": "remain",
+  "duplex_server_address": "remain",
+  "duplex_client_port": -1,
+  "duplex_server_port": -1
 }
