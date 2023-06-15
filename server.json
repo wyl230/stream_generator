@@ -8,7 +8,7 @@
   "control_port": 9002,
   "client_port": 9000,
   "server_port": 9000,
-  "video_in": 8000,
+  "video_in": 23200,
   "video_out": 3000,
   "report_interval": 1,
   "auto_send": true,
