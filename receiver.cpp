@@ -199,8 +199,10 @@ public:
   int send_thread(int port, long package_num, int delay, int packageSize) {
     // 初始化socket
     int my_socket = get_init_socket("0.0.0.0", 2222);
+    int duplex_socket = get_init_socket("0.0.0.0", 2233);
     // 指定目标
     sockaddr_in target_addr = get_sockaddr_in(client_address, video_out);
+    sockaddr_in duplex_target_addr = get_sockaddr_in(duplex_server_address, duplex_server_port);
 
     int recv_socket = get_init_socket("0.0.0.0", -1);
     auto recv_addr = get_sockaddr_in("0.0.0.0", server_port);
@@ -350,13 +352,22 @@ public:
       if(ptr->source_module_id == 100) {
         // 客户端发送给服务器
         cout << "客户端发送给服务器" << endl;
-        auto target_addr = get_sockaddr_in(duplex_server_address, duplex_server_port);
+        // int my_socket = get_init_socket("0.0.0.0", 23078);
         sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
       } else if(ptr->source_module_id == 200) {
         // 服务器发送给客户端
         cout << "服务器发送给客户端" << endl;
+        // auto my_socket = get_init_socket("0.0.0.0", 23078);
+        // int on=1;
+        // setsockopt(my_socket, SOL_SOCKET,SO_REUSEADDR | SO_BROADCAST,&on,sizeof(on));
         auto target_addr = get_sockaddr_in(duplex_client_address, duplex_client_port);
-        sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+        cout << duplex_client_address << " " << duplex_client_port << endl;
+
+        error = sendto(duplex_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+        if (error == -1) {
+          perror("sendto");
+          cout <<"sendto() error occurred at package "<< endl;
+        }
       }
       clock_gettime(CLOCK_MONOTONIC, &delay_a);
 
