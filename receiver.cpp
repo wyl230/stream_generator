@@ -127,7 +127,7 @@ public:
     json j;
     srcFile >> j;
     pack.source_user_id = j["source_id"];
-    pack.source_module_id = j["source_module_id"];
+    // pack.source_module_id = j["source_module_id"];
     pack.dest_user_id = j["dest_id"];
     package_num = j["package_num"];
     package_speed = j["package_speed"];
@@ -349,10 +349,12 @@ public:
 
       if(ptr->source_module_id == 100) {
         // 客户端发送给服务器
+        cout << "客户端发送给服务器" << endl;
         auto target_addr = get_sockaddr_in(duplex_server_address, duplex_server_port);
         sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
       } else if(ptr->source_module_id == 200) {
         // 服务器发送给客户端
+        cout << "服务器发送给客户端" << endl;
         auto target_addr = get_sockaddr_in(duplex_client_address, duplex_client_port);
         sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
       }
