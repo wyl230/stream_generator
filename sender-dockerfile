@@ -1,5 +1,11 @@
 FROM ubuntu:22.04
-WORKDIR /sender
-ADD  ./sender /sender
-ADD  ./init.json /sender
-CMD ./sender
+# WORKDIR /sender
+WORKDIR .
+# ADD ./sender /sender
+# ADD ./init.json /sender
+# ADD ./client.json /sender
+# ADD ./server.json /sender
+
+COPY . .
+
+CMD ./sender 0.0.0.0 ./client.json

@@ -25,7 +25,8 @@
 #include <thread>
 #include <vector>
 
-#include "json.hpp"
+#include <nlohmann/json.hpp>
+/* #include "json.hpp" */
 using namespace std;
 using json = nlohmann::json;
 #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
@@ -76,9 +77,9 @@ string client_address;
 string json_file_name;
 
 int main(int argc, char *argv[]) {
-  client_init();
   client_address = argv[1];
   json_file_name = argv[2];
+  client_init();
   /* global_packet_id = stoi(string(argv[2])); */
   /* global_packet_id = stoi(string(argv[2])); */
   std::ifstream ifs("packet_id.json");
@@ -109,9 +110,13 @@ void client_init() {
     cout << "Fail to open src.json" << endl;
     return;
   }
+  puts("1");
   json j;
+  puts("2");
   srcFile >> j;
+  puts("3");
   pack.source_user_id = j["source_id"];
+  puts("4");
   pack.source_module_id = j["source_module_id"];
   pack.dest_user_id = j["dest_id"];
   pack.flow_id = j["flow_id"];
@@ -191,6 +196,7 @@ int recv_thread(int port, int package_size) {
       for(int i = 0; i < sizeof(buffer); ++i) {
         package_head[i + sizeof(my_package)] = buffer[i];
       }
+      cout << "received: " << readLen << endl;
     } else { // 接受真正的视频流
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
       strcat(package_head,buffer); // something wrong
