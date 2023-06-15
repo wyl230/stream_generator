@@ -73,10 +73,12 @@ int control_port, server_port;// client:接入网 server：本pod接收程序 co
 char datagram[2048];
 my_package pack;
 string client_address;
+string json_file_name;
 
 int main(int argc, char *argv[]) {
   client_init();
   client_address = argv[1];
+  json_file_name = argv[2];
   /* global_packet_id = stoi(string(argv[2])); */
   /* global_packet_id = stoi(string(argv[2])); */
   std::ifstream ifs("packet_id.json");
@@ -102,7 +104,7 @@ int main(int argc, char *argv[]) {
 }
 
 void client_init() {
-  ifstream srcFile("./init.json", ios::binary);
+  ifstream srcFile(json_file_name, ios::binary);
   if (!srcFile.is_open()) {
     cout << "Fail to open src.json" << endl;
     return;
@@ -182,6 +184,12 @@ int recv_thread(int port, int package_size) {
       readLen = 1200;
       memset(buffer, 1, 1200);
       std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+    } else if(send_type == 5) { // 双向业务，接收转发来的client
+      readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+      strcat(package_head,buffer); // something wrong
+      for(int i = 0; i < sizeof(buffer); ++i) {
+        package_head[i + sizeof(my_package)] = buffer[i];
+      }
     } else { // 接受真正的视频流
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
       strcat(package_head,buffer); // something wrong
