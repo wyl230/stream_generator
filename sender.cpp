@@ -110,6 +110,7 @@ void client_init() {
   json j;
   srcFile >> j;
   pack.source_user_id = j["source_id"];
+  pack.source_module_id = j["source_module_id"];
   pack.dest_user_id = j["dest_id"];
   pack.flow_id = j["flow_id"];
   package_num = j["package_num"];
@@ -240,5 +241,6 @@ void data_generate(char *package_head)
   my_package *temp=(my_package *)package_head;
   temp->source_user_id = pack.source_user_id;
   temp->dest_user_id = pack.dest_user_id;
+  temp->dest_user_id = pack.source_module_id;
   return;
 }
