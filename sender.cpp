@@ -77,11 +77,11 @@ string client_address;
 int main(int argc, char *argv[]) {
   client_init();
   client_address = argv[1];
+  global_packet_id = stoi(string(argv[2]));
   /* global_packet_id = stoi(string(argv[2])); */
-  /* global_packet_id = stoi(string(argv[2])); */
-  std::ifstream ifs("packet_id.json");
-  json jf = json::parse(ifs);
-  global_packet_id = jf[to_string(pack.flow_id).c_str()];
+  // std::ifstream ifs("packet_id.json");
+  // json jf = json::parse(ifs);
+  // global_packet_id = jf[to_string(pack.flow_id).c_str()];
 
   cout << "client address:" << client_address << endl;
   struct hostent *host;
@@ -110,7 +110,7 @@ void client_init() {
   json j;
   srcFile >> j;
   pack.source_user_id = j["source_id"];
-  pack.source_module_id = j["source_module_id"];
+  // pack.source_module_id = j["source_module_id"];
   pack.dest_user_id = j["dest_id"];
   pack.flow_id = j["flow_id"];
   package_num = j["package_num"];
@@ -122,11 +122,13 @@ void client_init() {
   video_in = j["video_in"];
   auto_send = j["auto_send"];
   send_type = j["type"];
+  puts("6");
   srcFile.close();
 
   if(pack.source_user_id == 33000 || pack.dest_user_id == 33000) {
     send_to_core_net = true;
   }
+  puts("7");
   return;
 }
 
@@ -241,6 +243,6 @@ void data_generate(char *package_head)
   my_package *temp=(my_package *)package_head;
   temp->source_user_id = pack.source_user_id;
   temp->dest_user_id = pack.dest_user_id;
-  temp->dest_user_id = pack.source_module_id;
+  // temp->dest_user_id = pack.source_module_id;
   return;
 }
