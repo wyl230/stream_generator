@@ -202,7 +202,6 @@ public:
     int duplex_socket = get_init_socket("0.0.0.0", 2233);
     // 指定目标
     sockaddr_in target_addr = get_sockaddr_in(client_address, video_out);
-    sockaddr_in duplex_target_addr = get_sockaddr_in(duplex_server_address, duplex_server_port);
 
     int recv_socket = get_init_socket("0.0.0.0", -1);
     auto recv_addr = get_sockaddr_in("0.0.0.0", server_port);
@@ -342,6 +341,7 @@ public:
       // strncpy(datagram, buffer + sizeof(my_package), readLen - sizeof(my_package));
       // 发送给VLC 仅此端口为视频业务
       if(ptr->flow_id == 23023) {
+        cout << "视频发送" << endl;
         error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
         if (error == -1) {
           perror("sendto");
@@ -352,22 +352,16 @@ public:
       if(ptr->source_module_id == 100) {
         // 客户端发送给服务器
         cout << "客户端发送给服务器" << endl;
-        // int my_socket = get_init_socket("0.0.0.0", 23078);
-        sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+        sockaddr_in duplex_target_addr = get_sockaddr_in(real_address(duplex_client_address), duplex_client_port);
+        error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
+        if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
       } else if(ptr->source_module_id == 200) {
         // 服务器发送给客户端
         cout << "服务器发送给客户端" << endl;
-        // auto my_socket = get_init_socket("0.0.0.0", 23078);
-        // int on=1;
-        // setsockopt(my_socket, SOL_SOCKET,SO_REUSEADDR | SO_BROADCAST,&on,sizeof(on));
-        auto target_addr = get_sockaddr_in(duplex_client_address, duplex_client_port);
         cout << duplex_client_address << " " << duplex_client_port << endl;
-
-        error = sendto(duplex_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
-        if (error == -1) {
-          perror("sendto");
-          cout <<"sendto() error occurred at package "<< endl;
-        }
+        sockaddr_in duplex_target_addr = get_sockaddr_in(real_address(duplex_server_address), duplex_server_port);
+        error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
+        if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
       }
       clock_gettime(CLOCK_MONOTONIC, &delay_a);
 
