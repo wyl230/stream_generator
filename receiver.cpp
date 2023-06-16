@@ -247,7 +247,7 @@ public:
 
       if(flow_msg.count(ptr->flow_id)) {
         auto &msg = flow_msg[ptr->flow_id];
-        if(get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) < 1e9) {
+        if(get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) < 2e9) {
           msg.packet_num++;
           msg.sum_delay += delay_us;
           msg.max_delay = max(delay_us, msg.max_delay);
