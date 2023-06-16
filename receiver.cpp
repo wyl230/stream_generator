@@ -1,82 +1,14 @@
-#include <arpa/inet.h>
-#include <map>
-#include <fcntl.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <netinet/tcp.h>
-#include <netinet/udp.h>
-#include <semaphore.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/shm.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <climits>
-
-#include <algorithm>
-#include <cstring>
-#include <fstream>
-#include <iomanip>
-#include <vector>
-#include <queue>
-#include <iostream>
-#include <thread>
-#include <vector>
-
+#include "header.h"
 #include "json.hpp"
 using namespace std;
 using json = nlohmann::json;
 #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
 
-const int max_num_of_packet_id_allowed = 5000;
-int cur_num_of_packet_id_allowed = 0;
-
-struct my_package {
-  uint32_t tunnel_id;
-  uint32_t source_module_id;
-  uint16_t source_user_id;
-  uint16_t dest_user_id;
-  uint32_t flow_id;
-  uint32_t service_id;
-  uint32_t qos_id;
-  uint32_t packet_id;
-  timespec timestamp;
-  uint32_t ext_flag;
-};
-
-struct control_message {
-  uint32_t  total_loss=0;
-  uint32_t  recent_loss=0;
-  uint32_t  max_delay;
-  uint32_t  min_delay;
-  uint32_t  avg_delay;
-  uint32_t  avg_speed=0;
-  uint32_t  insId=0;
-  uint32_t  unused3=0;
-};
-// 包数，字节总数，延迟总和，最大时延，最小时延，丢包率
-struct msg_for_each_stream {
-  uint32_t packet_num;
-  uint32_t byte_num;
-  uint32_t sum_delay;
-  uint32_t max_delay;
-  uint32_t min_delay;
-  uint32_t loss_rate;
-  uint32_t max_packet_id;
-  uint32_t total_packet_num;
-  timespec last_min_max_delay_record;
-  queue<uint32_t> recent_packet_id;
-};
-
-
 string generateRandomString() {
   const int length = 64;
   const string letters = "0123456789"
                           "abcdefghijklmnopqrstuvwxyz"
-                          "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                          "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+                          "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   srand(time(NULL));
   string result;
   for (int i = 0; i < length; i++) {
@@ -105,9 +37,8 @@ public:
   string duplex_server_address, duplex_client_address;
   int duplex_server_port, duplex_client_port;
 
-
   map<int, msg_for_each_stream> flow_msg;
-  
+
   string real_address(string address) {
     struct hostent *host;
     host = gethostbyname(address.c_str());
@@ -196,6 +127,121 @@ public:
     return target_addr;
   }
 
+  void print_head_msg(my_package* ptr) {
+    cout << "head: " << ptr->tunnel_id << " " << ptr->source_module_id << " ";
+    cout << ptr->source_user_id << " ";
+    cout << ptr->source_module_id << " ";
+    cout << ptr->dest_user_id << " ";
+    cout << ptr->flow_id << " ";
+    cout << ptr->service_id << " ";
+    cout << ptr->qos_id << " ";
+    cout << ptr->packet_id << " ";
+    cout << ptr->timestamp.tv_sec << "." << ptr->timestamp.tv_nsec << " ";
+    cout << ptr->ext_flag << endl;
+  }
+
+  msg_for_each_stream single_msg_init(uint32_t delay_us, int readLen, uint32_t packet_id, bool timeout = false) {
+    msg_for_each_stream msg;
+    msg.packet_num = 1;
+    msg.sum_delay = delay_us;
+    msg.max_delay = 0;
+    msg.min_delay = delay_us;
+    msg.byte_num = readLen; // 算上包头
+    if(!timeout) {
+      msg.max_packet_id = packet_id;
+      msg.total_packet_num = 1;
+    }
+    clock_gettime(CLOCK_REALTIME, &msg.last_min_max_delay_record);
+    return msg;
+  }
+
+  void update_single_msg(uint32_t flow_id, uint32_t delay_us, uint32_t packet_id, int readLen) {
+    auto &msg = flow_msg[flow_id];
+    msg.packet_num++;
+    msg.sum_delay += delay_us;
+    msg.max_delay = max(delay_us, msg.max_delay);
+    msg.min_delay = min(delay_us, msg.min_delay);
+    msg.byte_num += readLen; //  - sizeof(my_package); // no 包头
+    msg.max_packet_id = max(msg.max_packet_id, packet_id);
+    cout << "max_packet_id" << msg.max_packet_id << endl;
+    msg.total_packet_num++;
+  }
+
+  void adjust_packet_id_queue(my_package* ptr) {
+    cur_num_of_packet_id_allowed++; // 如果超过了，就缩减10% 
+    // 添加id序列
+    auto &msg = flow_msg[ptr->flow_id];
+    msg.recent_packet_id.push(ptr->packet_id);
+    if(cur_num_of_packet_id_allowed > 
+    max_num_of_packet_id_allowed) {
+      auto pop_num = msg.recent_packet_id.size() / 10;
+      pop_num = pop_num >= 3 ? pop_num : 0; // 
+      for(auto i = 0; i < pop_num; ++i) {
+        msg.recent_packet_id.pop();
+      }
+      cur_num_of_packet_id_allowed -= pop_num;
+    }
+  }
+
+  timespec get_current_time() {
+    timespec now = {};  // 生成新的 timestamp
+    clock_gettime(CLOCK_REALTIME, &now);
+    return now;
+  }
+
+  void print_timestamp(my_package* ptr) {
+    std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
+    std::cout << "timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
+  }
+
+  void print_msg(my_package* ptr) {
+    auto &msg = flow_msg[ptr->flow_id];
+    cout << "业务id: " << ptr->flow_id << ": delays: max: " << msg.max_delay << ", min: " << msg.min_delay << ", byte_num: " << msg.byte_num << ", packet_num: " << msg.packet_num << endl;
+
+  }
+
+  void update_flow_msg(my_package* ptr, int readLen) {
+    // 计算延迟 ns
+    auto get_time_diff = [](timespec t1, timespec t2)->double {
+      return (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
+    };
+
+    timespec now = get_current_time();
+
+    double time_diff = get_time_diff(ptr->timestamp, now);
+
+    uint32_t delay_us = time_diff / 1000;
+    cout << "delay us: " << delay_us << endl;
+    // if(delay_us > 1e8) {
+    //   delay_us = 0;
+    // }
+
+    if(!flow_msg.count(ptr->flow_id)) { // 没有，则初始化
+      cout << "单条业务流初始化" << endl;
+      flow_msg[ptr->flow_id] = single_msg_init(delay_us, readLen, ptr->packet_id);
+    } else { // 有了，则更新
+      update_single_msg(ptr->flow_id, delay_us, ptr->packet_id, readLen); 
+    }
+
+    adjust_packet_id_queue(ptr);
+    cout << "now" << now.tv_sec << " || msg: " << flow_msg[ptr->flow_id].last_min_max_delay_record.tv_sec << endl;
+    cout << "time diff ai" << get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) << endl;
+
+    if(flow_msg.count(ptr->flow_id) && get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) > 1e9) {
+      // 报告，超过一定时间了，除去最大id和包总数，全部初始化(所有id都要初始化)
+      // 并设置时间
+      report_delay(); 
+      cout << "msg reinit" << endl;
+      for(auto it = flow_msg.begin(); it != flow_msg.end(); ++it) {
+        int key = it->first;
+        auto& value = it->second;
+        value = single_msg_init(delay_us, readLen, ptr->packet_id);
+      }
+      // flow_msg.clear();
+      // cout << "count: " << flow_msg.count(ptr->flow_id);
+    }
+  }
+
   int send_thread(int port, long package_num, int delay, int packageSize) {
     // 初始化socket
     int my_socket = get_init_socket("0.0.0.0", 2222);
@@ -212,13 +258,9 @@ public:
     socklen_t sender_addrLen = sizeof(sender_addr);
     char buffer[package_size];
     int readLen = 0;
-    timespec delay_a, delay_c;
-    delay_a = {0, 0};
-    delay_c = {0, 0};
     int error = 0;
     // 开始发送
     for (int k = 0; ; k++) {
-      // sprintf(sendBuf, "%d", i);
       // 固定化包间间隔
       memset(buffer, 0, sizeof(buffer));
       readLen = recvfrom(recv_socket, buffer, package_size+sizeof(my_package), 0, (sockaddr *)&sender_addr, &sender_addrLen);
@@ -230,113 +272,10 @@ public:
       // 从buffer中读取时间戳
       my_package* ptr = reinterpret_cast<my_package*>(buffer); 
 
-      cout << "head: " << ptr->tunnel_id << " " << ptr->source_module_id << " ";
-      cout << ptr->source_user_id << " ";
-      cout << ptr->source_module_id << " ";
-      cout << ptr->dest_user_id << " ";
-      cout << ptr->flow_id << " ";
-      cout << ptr->service_id << " ";
-      cout << ptr->qos_id << " ";
-      cout << ptr->packet_id << " ";
-      cout << ptr->timestamp.tv_sec << "." << ptr->timestamp.tv_nsec << " ";
-      cout << ptr->ext_flag << endl;
-
-      std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
-      std::cout << "timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
-
-      // 计算延迟 ns
-      auto get_time_diff = [](timespec t1, timespec t2)->double {
-        return (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
-      };
-
-      timespec now = {};  // 生成新的 timestamp
-      clock_gettime(CLOCK_REALTIME, &now);
-      double time_diff = get_time_diff(ptr->timestamp, now);
-
-      cout << "time_diff:(ns) " << time_diff << endl;
-
-      uint32_t delay_us = time_diff / 1000;
-
-      if(flow_msg.count(ptr->flow_id)) {
-        auto &msg = flow_msg[ptr->flow_id];
-        if(get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) < 2e9) {
-          msg.packet_num++;
-          msg.sum_delay += delay_us;
-          msg.max_delay = max(delay_us, msg.max_delay);
-          msg.min_delay = min(delay_us, msg.min_delay);
-          msg.byte_num += readLen - sizeof(my_package); // no 包头
-        } 
-        msg.max_packet_id = max(msg.max_packet_id, ptr->packet_id);
-        // cout << msg.max_packet_id << "???" << endl;
-        msg.total_packet_num++;
-      } else {
-        msg_for_each_stream msg;
-        msg.packet_num = 1;
-        msg.sum_delay = delay_us;
-        msg.max_delay = delay_us;
-        msg.min_delay = delay_us;
-        msg.byte_num = readLen; // 算上包头
-        msg.max_packet_id = ptr->packet_id;
-        msg.total_packet_num = 1;
-        clock_gettime(CLOCK_REALTIME, &msg.last_min_max_delay_record);
-
-        flow_msg[ptr->flow_id] = msg;
-      }
-
-      bool not_init_msg = false;
-
-      if(!flow_msg.count(ptr->flow_id)) { // 没有，则初始化
-        not_init_msg = true;
-        msg_for_each_stream msg;
-        msg.packet_num = 1;
-        msg.sum_delay = delay_us;
-        msg.max_delay = delay_us;
-        msg.min_delay = delay_us;
-        msg.byte_num = readLen; // 算上包头
-        msg.max_packet_id = ptr->packet_id;
-        msg.total_packet_num = 1;
-        clock_gettime(CLOCK_REALTIME, &msg.last_min_max_delay_record);
-        flow_msg[ptr->flow_id] = msg;
-      } else { // 有了，则更新
-        auto &msg = flow_msg[ptr->flow_id];
-        msg.packet_num++;
-        msg.sum_delay += delay_us;
-        msg.max_delay = max(delay_us, msg.max_delay);
-        msg.min_delay = min(delay_us, msg.min_delay);
-        msg.byte_num += readLen - sizeof(my_package); // no 包头
-        msg.max_packet_id = max(msg.max_packet_id, ptr->packet_id);
-        cout << msg.max_packet_id << "???" << endl;
-        msg.total_packet_num++;
-      }
-
-      cur_num_of_packet_id_allowed++; // 如果超过了，就缩减10% 
-      // 添加id序列
-      auto &msg = flow_msg[ptr->flow_id];
-      msg.recent_packet_id.push(ptr->packet_id);
-      if(cur_num_of_packet_id_allowed > 
-      max_num_of_packet_id_allowed) {
-        auto pop_num = msg.recent_packet_id.size() / 10;
-        pop_num = pop_num >= 3 ? pop_num : 0; // 
-        for(auto i = 0; i < pop_num; ++i) {
-          msg.recent_packet_id.pop();
-        }
-        cur_num_of_packet_id_allowed -= pop_num;
-      }
-
-
-      if(flow_msg.count(ptr->flow_id) && get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) > 1e9) {
-        // 超过一定时间了，除去最大id和包总数，全部初始化
-        msg_for_each_stream msg;
-        msg.packet_num = 1;
-        msg.sum_delay = delay_us;
-        msg.max_delay = delay_us;
-        msg.min_delay = delay_us;
-        msg.total_packet_num = 1;
-        clock_gettime(CLOCK_REALTIME, &msg.last_min_max_delay_record);
-        flow_msg[ptr->flow_id] = msg;
-      }
-
-      cout << "now: delays: " << msg.max_delay << " | " << msg.min_delay << '|' << msg.byte_num << '|' << msg.packet_num << endl;
+      print_head_msg(ptr);
+      print_timestamp(ptr);
+      update_flow_msg(ptr, readLen);
+      print_msg(ptr);
 
       // strncpy(datagram, buffer + sizeof(my_package), readLen - sizeof(my_package));
       // 发送给VLC 仅此端口为视频业务
@@ -363,24 +302,12 @@ public:
         error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
         if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
       }
-      clock_gettime(CLOCK_MONOTONIC, &delay_a);
-
-      if(delay_a.tv_sec - delay_c.tv_sec >= 1) {
-        report_delay();
-        delay_c = delay_a;
-
-        static int cnt = 0;
-        cout << "sending: " << cnt++ << endl;
-        delay_c = delay_a;
-      }
     }
-    sleep(1);
+    // sleep(1);
     return 0;
   }
 
-  void report_delay()
-  {
-    //发送准备
+  void report_delay() {
     json j;
     for(auto it = flow_msg.begin(); it != flow_msg.end(); ++it) {
       int key = it->first;
@@ -417,8 +344,6 @@ public:
   }
 
 };
-
-// ----------------
 
 int main(int argc, char *argv[]) {
   Receiver receiver(argv[1], argv[2]);

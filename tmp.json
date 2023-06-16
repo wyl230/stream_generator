@@ -1,0 +1,202 @@
+{'1': {'byte_num': 112968, 'id_list': [
+      10561,
+      10610,
+      10656,
+      10005,
+      8914,
+      971,
+      10692,
+      10481,
+      10376,
+      9136,
+      9533,
+      10562,
+      10611,
+      8915,
+      9872,
+      10693,
+      10482,
+      10377,
+      9137,
+      9534,
+      10563,
+      10612,
+      10658,
+      10694,
+      10695,
+      9139,
+      10484
+    ], 'last_min_max_delay_record': 1686901808, 'loss_rate': 0, 'max_delay': 33717, 'max_packet_id': 10695, 'min_delay': 348, 'packet_num': 523, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~
+  ]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 2426506, 'total_packet_num': 523}, '10': {'byte_num': 112104, 'id_list': [9446, 9038, 8558, 10672, 9623, 9244, 10215, 10521, 9804, 10430, 10330, 9447, 9039, 10673, 9624, 9245, 10216, 10522, 9805, 10431, 9448, 10331, 9040, 8560, 10674, 10675, 9807, 9626, 9247], 'last_min_max_delay_record': 1686901808, 'loss_rate': 0, 'max_delay': 33592, 'max_packet_id': 10683, 'min_delay': 125, 'packet_num': 519, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 2215597, 'total_packet_num': 519
+}, '11': {'byte_num': 3456, 'id_list': [
+    9031,
+    10518,
+    9438,
+    10672,
+    9939,
+    10590,
+    10075,
+    9617,
+    10208,
+    10076,
+    9618,
+    10209,
+    10520,
+    9033,
+    9440
+  ], 'last_min_max_delay_record': 1686901809, 'loss_rate': 0, 'max_delay': 33553, 'max_packet_id': 10672, 'min_delay': 192, 'packet_num': 16, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~
+]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 289165, 'total_packet_num': 16}, '12': {'byte_num': 3024, 'id_list': [10199, 9932, 10320, 9787, 10690, 10691, 10421, 10589, 8790, 8534, 10516, 10069, 10201], 'last_min_max_delay_record': 1686901809, 'loss_rate': 0, 'max_delay': 33629, 'max_packet_id': 10691, 'min_delay': 11937, 'packet_num': 14, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 275193, 'total_packet_num': 14
+}, '13': {'byte_num': 1296, 'id_list': [
+  8774,
+  10411,
+  9926,
+  9419,
+  10635
+], 'last_min_max_delay_record': 1686901809, 'loss_rate': 0, 'max_delay': 12388, 'max_packet_id': 10635, 'min_delay': 5280, 'packet_num': 6, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~
+]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 62534, 'total_packet_num': 6}, '14': {'byte_num': 5184, 'id_list': [10688, 10053, 10507, 8758, 9590, 8245, 8506, 10307, 10669, 10406, 9202, 8989, 9917, 10632, 10054, 8759, 8990, 9918, 10633, 10055, 8760, 10690, 10509], 'last_min_max_delay_record': 1686901809, 'loss_rate': 0, 'max_delay': 33666, 'max_packet_id': 10690, 'min_delay': 178, 'packet_num': 24, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 394510, 'total_packet_num': 24
+}, '15': {'byte_num': 135216, 'id_list': [
+9758,
+10046,
+10687,
+8746,
+8492,
+10503,
+9909,
+8975,
+9393,
+10666,
+10629,
+10576,
+9759,
+10047,
+8747,
+8493,
+10504,
+9910,
+9760,
+10048,
+8748,
+10505,
+8494,
+9911,
+10689,
+10301,
+10668,
+9395
+], 'last_min_max_delay_record': 1686901808, 'loss_rate': 0, 'max_delay': 33930, 'max_packet_id': 10689, 'min_delay': 74, 'packet_num': 626, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~
+]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 1894572, 'total_packet_num': 626}, '16': {'byte_num': 134568, 'id_list': [10623, 10034, 10176, 8959, 10573, 9188, 9750, 10499, 10665, 8482, 10686, 8223, 10624, 10035, 10177, 8960, 10574, 9384, 9189, 10666, 9190, 10667, 10626, 10037, 8225, 10501, 10688, 9752], 'last_min_max_delay_record': 1686901808, 'loss_rate': 0, 'max_delay': 33565, 'max_packet_id': 10688, 'min_delay': 69, 'packet_num': 623, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 2365082, 'total_packet_num': 623
+}, '17': {'byte_num': 864, 'id_list': [
+8952,
+10623,
+10293
+], 'last_min_max_delay_record': 1686901809, 'loss_rate': 0, 'max_delay': 11986, 'max_packet_id': 10623, 'min_delay': 224, 'packet_num': 4, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~
+]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 36029, 'total_packet_num': 4}, '18': {'byte_num': 171072, 'id_list': [8195, 10020, 10386, 9888, 10492, 8940, 10286, 10661, 8454, 9557, 9362, 10568, 10618, 10164, 9730, 10021, 8710, 8196, 10685, 10387, 8941, 10388, 8942, 8456, 10288, 10620, 9559, 10494, 9890], 'last_min_max_delay_record': 1686901808, 'loss_rate': 0, 'max_delay': 33464, 'max_packet_id': 10685, 'min_delay': 68, 'packet_num': 792, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 2621276, 'total_packet_num': 792
+}, '19': {'byte_num': 1512, 'id_list': [
+10280,
+10568,
+8442,
+8927,
+10662,
+10157
+], 'last_min_max_delay_record': 1686901809, 'loss_rate': 0, 'max_delay': 12201, 'max_packet_id': 10662, 'min_delay': 8722, 'packet_num': 7, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~
+]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 80571, 'total_packet_num': 7}, '2': {'byte_num': 3240, 'id_list': [8412, 9704, 10141, 9328, 10263, 8901, 9868, 9123, 10557, 10476, 10004, 10686, 10687, 8414], 'last_min_max_delay_record': 1686901809, 'loss_rate': 0, 'max_delay': 33891, 'max_packet_id': 10687, 'min_delay': 140, 'packet_num': 15, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 345848, 'total_packet_num': 15
+}, '3': {'byte_num': 121608, 'id_list': [
+10364,
+9113,
+10683,
+10254,
+9512,
+8652,
+10608,
+9693,
+8398,
+10549,
+10365,
+9114,
+10684,
+10255,
+9513,
+8653,
+10609,
+9694,
+8399,
+10550,
+10366,
+10685,
+9514,
+10367,
+10686,
+9515,
+8401,
+8655
+], 'last_min_max_delay_record': 1686901808, 'loss_rate': 0, 'max_delay': 32513, 'max_packet_id': 10690, 'min_delay': 72, 'packet_num': 563, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~
+]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 2086319, 'total_packet_num': 563}, '4': {'byte_num': 4320, 'id_list': [9985, 9681, 10546, 9308, 10691, 10247, 9986, 9682, 10547, 10692, 9309, 8877, 8646, 9104, 10682, 10248, 10249, 9684, 9988], 'last_min_max_delay_record': 1686901809, 'loss_rate': 0, 'max_delay': 33909, 'max_packet_id': 10692, 'min_delay': 97, 'packet_num': 20, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 370768, 'total_packet_num': 20
+}, '5': {'byte_num': 4104, 'id_list': [
+8632,
+9495,
+9675,
+10355,
+10456,
+9846,
+10242,
+9302,
+9098,
+10653,
+10117,
+9303,
+9099,
+10654,
+10118,
+9677,
+8870,
+8634
+], 'last_min_max_delay_record': 1686901809, 'loss_rate': 0, 'max_delay': 33726, 'max_packet_id': 10654, 'min_delay': 223, 'packet_num': 19, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~
+]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 354216, 'total_packet_num': 19}, '6': {'byte_num': 4968, 'id_list': [10599, 8616, 9286, 10452, 10238, 9970, 10109, 9664, 10680, 8370, 9837, 10354, 9484, 10691, 9838, 10355, 9485, 10692, 10240, 10454, 10111, 8618], 'last_min_max_delay_record': 1686901809, 'loss_rate': 0, 'max_delay': 33915, 'max_packet_id': 10692, 'min_delay': 81, 'packet_num': 23, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 383039, 'total_packet_num': 23
+}, '7': {'byte_num': 163080, 'id_list': [
+9473,
+10646,
+10532,
+9961,
+10677,
+8353,
+10447,
+9274,
+10232,
+8596,
+9069,
+10103,
+9826,
+10690,
+9655,
+10348,
+9474,
+10647,
+10533,
+9962,
+10678,
+8354,
+10448,
+8355,
+10449,
+10105,
+10692,
+9828
+], 'last_min_max_delay_record': 1686901808, 'loss_rate': 0, 'max_delay': 33367, 'max_packet_id': 10692, 'min_delay': 194, 'packet_num': 755, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~
+]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 3329358, 'total_packet_num': 755}, '8': {'byte_num': 111888, 'id_list': [10440, 10226, 9955, 10527, 10688, 10341, 10592, 8582, 10098, 10644, 10441, 10227, 9956, 10528, 10689, 10342, 10099, 10645, 10442, 10228, 9957, 10529, 10690, 10343, 10594, 10646, 10647, 10692], 'last_min_max_delay_record': 1686901808, 'loss_rate': 0, 'max_delay': 33614, 'max_packet_id': 10692, 'min_delay': 76, 'packet_num': 518, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 2071216, 'total_packet_num': 518
+}, '9': {'byte_num': 3240, 'id_list': [
+9811,
+9257,
+9456,
+10592,
+10092,
+10526,
+9634,
+10691,
+10224,
+10644,
+10692,
+10225,
+10645,
+10440
+], 'last_min_max_delay_record': 1686901809, 'loss_rate': 0, 'max_delay': 33900, 'max_packet_id': 10692, 'min_delay': 11913, 'packet_num': 15, 'pod_id': '$@=:x14P@o<c%nNV(Fnv0Q&5VV%0$r#!GPJ.;OW&6Ib,~
+]!\'XiwY)5|y_"YXmvr#', 'sum_delay': 354352, 'total_packet_num': 15}}

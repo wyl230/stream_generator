@@ -93,7 +93,6 @@ int main(int argc, char *argv[]) {
   client_address = inet_ntoa(*(struct in_addr *)host->h_addr_list[0]);
   cout << "client address:"<<client_address << endl;
   cout << server_port << endl;
-  sleep(1);
   cout << "接收开始" << endl;
   std::thread receive_t(recv_thread,server_port,package_size);
   while (1) {
@@ -220,12 +219,12 @@ int recv_thread(int port, int package_size) {
     //
     //
 
-    std::ifstream ifs("packet_id.json");
-    json jf = json::parse(ifs);
+    // std::ifstream ifs("packet_id.json");
+    // json jf = json::parse(ifs);
     
-    jf[to_string(pack.flow_id).c_str()] = global_packet_id;
-    std::ofstream file("packet_id.json");
-    file << jf;
+    // jf[to_string(pack.flow_id).c_str()] = global_packet_id;
+    // std::ofstream file("packet_id.json");
+    // file << jf;
 
     //
     clock_gettime(CLOCK_MONOTONIC, &delay_a);
