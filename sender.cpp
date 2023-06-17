@@ -212,6 +212,17 @@ int recv_thread(int port, int package_size) {
 
     if(send_to_core_net) {
       cout << "发送到核心网，todo" << endl;
+      sockaddr_in target_addr;
+      target_addr.sin_family = AF_INET;
+      target_addr.sin_port = htons(32001);
+      target_addr.sin_addr.s_addr = inet_addr("11.0.8.1");
+
+      auto error = sendto(my_socket, package_head, readLen+sizeof
+      (my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+      if (error == -1) {
+        perror("sendto");
+        cout <<"核心网发送失败！ sendto() error occurred at package "<< endl;
+      }
     } else {
       sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
     }
