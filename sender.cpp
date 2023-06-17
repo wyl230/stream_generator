@@ -120,7 +120,7 @@ void client_init() {
   report_interval = j["report_interval"];
   video_in = j["video_in"];
   auto_send = j["auto_send"];
-  send_type = j["type"];
+  send_type = j["send_type"];
   puts("6");
   srcFile.close();
 
