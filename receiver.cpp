@@ -146,7 +146,7 @@ public:
     msg_for_each_stream msg;
     msg.packet_num = 1;
     msg.sum_delay = delay_us;
-    msg.max_delay = 0;
+    msg.max_delay = delay_us;
     msg.min_delay = delay_us;
     msg.byte_num = readLen; // 算上包头
     if(!timeout) {
@@ -230,6 +230,8 @@ public:
     cout << "now" << now.tv_sec << " || msg: " << flow_msg[ptr->flow_id].last_min_max_delay_record.tv_sec << endl;
     cout << "time diff ai" << get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) << endl;
 
+    print_msg(ptr);
+
     if(flow_msg.count(ptr->flow_id) && get_time_diff(last_time, get_current_time()) > 1e9) {
       last_time = get_current_time();
       // 报告，超过一定时间了，除去最大id和包总数，全部初始化(所有id都要初始化)
@@ -279,7 +281,6 @@ public:
       print_head_msg(ptr);
       print_timestamp(ptr);
       update_flow_msg(ptr, readLen);
-      print_msg(ptr);
 
       // strncpy(datagram, buffer + sizeof(my_package), readLen - sizeof(my_package));
       // 发送给VLC 仅此端口为视频业务
