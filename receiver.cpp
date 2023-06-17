@@ -24,8 +24,10 @@ public:
   Receiver(string client_address, string control_address):client_address(client_address), control_address(control_address) {
     cout << "client address: " << client_address << endl;
     cout << "control address: " << control_address << endl;
+    last_time = get_current_time();
   }
 
+  timespec last_time;
   int package_size = 2048, package_speed, delay, report_interval;
   long package_num;
   int server_port, video_out;
@@ -200,6 +202,7 @@ public:
 
   }
 
+
   void update_flow_msg(my_package* ptr, int readLen) {
     // 计算延迟 ns
     auto get_time_diff = [](timespec t1, timespec t2)->double {
@@ -227,17 +230,18 @@ public:
     cout << "now" << now.tv_sec << " || msg: " << flow_msg[ptr->flow_id].last_min_max_delay_record.tv_sec << endl;
     cout << "time diff ai" << get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) << endl;
 
-    if(flow_msg.count(ptr->flow_id) && get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) > 1e9) {
+    if(flow_msg.count(ptr->flow_id) && get_time_diff(last_time, get_current_time()) > 1e9) {
+      last_time = get_current_time();
       // 报告，超过一定时间了，除去最大id和包总数，全部初始化(所有id都要初始化)
       // 并设置时间
       report_delay(); 
       cout << "msg reinit" << endl;
-      for(auto it = flow_msg.begin(); it != flow_msg.end(); ++it) {
-        int key = it->first;
-        auto& value = it->second;
-        value = single_msg_init(delay_us, readLen, ptr->packet_id);
-      }
-      // flow_msg.clear();
+      // for(auto it = flow_msg.begin(); it != flow_msg.end(); ++it) {
+      //   int key = it->first;
+      //   auto& value = it->second;
+      //   value = single_msg_init(delay_us, readLen, ptr->packet_id);
+      // }
+      flow_msg.clear();
       // cout << "count: " << flow_msg.count(ptr->flow_id);
     }
   }
