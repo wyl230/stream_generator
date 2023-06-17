@@ -1,0 +1,16 @@
+{
+  "registry-mirrors": [
+    "https://hub-mirror.c.163.com",
+    "https://mirror.baidubce.com"
+  ],
+  "insecure-registries": [
+    "registry.satellite.pku.edu.cn"
+  ],
+  "proxies": {
+    "default": {
+      "httpProxy": "http://127.0.0.1:7891/",
+      "httpsProxy": "http://127.0.0.1:7891/",
+      "noProxy": "localhost,127.0.0.1"
+    }
+  }
+}
