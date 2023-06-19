@@ -185,7 +185,7 @@ int recv_thread(int port, int package_size) {
       memset(buffer, 1, 1200);
       std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
     } else if(send_type == 10) {
-      return;
+      return -1;
     } else { // 接受真正的视频流
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
       strcat(package_head,buffer); // something wrong
