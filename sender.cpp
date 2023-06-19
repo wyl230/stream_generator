@@ -184,6 +184,8 @@ int recv_thread(int port, int package_size) {
       readLen = 1200;
       memset(buffer, 1, 1200);
       std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+    } else if(send_type == 10) {
+      return;
     } else { // 接受真正的视频流
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
       strcat(package_head,buffer); // something wrong
@@ -229,13 +231,16 @@ int recv_thread(int port, int package_size) {
     // 写入packet_id到文件中 json格式 [id: packet_id]
     //
     //
-
-    // std::ifstream ifs("packet_id.json");
-    // json jf = json::parse(ifs);
-    
-    // jf[to_string(pack.flow_id).c_str()] = global_packet_id;
-    // std::ofstream file("packet_id.json");
-    // file << jf;
+    //
+    /* static int cnt = 0; */
+    /* if(cnt++ % 100 == 0) { */
+    /*   std::ifstream ifs("packet_id.json"); */
+    /*   json jf = json::parse(ifs); */
+    /**/
+    /*   jf[to_string(pack.flow_id).c_str()] = global_packet_id; */
+    /*   std::ofstream file("packet_id.json"); */
+    /*   file << jf; */
+    /* } */
 
     //
     clock_gettime(CLOCK_MONOTONIC, &delay_a);
