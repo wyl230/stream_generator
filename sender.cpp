@@ -74,6 +74,17 @@ char datagram[2048];
 my_package pack;
 string client_address;
 
+
+string real_address(string address) {
+  struct hostent *host;
+  host = gethostbyname(address.c_str());
+  if (host == NULL) {
+    cout << "gethostbyname error" << endl;
+    return "gethostbyname error";
+  }
+  return inet_ntoa(*(struct in_addr *)host->h_addr_list[0]);
+}
+
 int main(int argc, char *argv[]) {
   client_init();
   client_address = argv[1];
@@ -84,14 +95,6 @@ int main(int argc, char *argv[]) {
   // global_packet_id = jf[to_string(pack.flow_id).c_str()];
 
   cout << "client address:" << client_address << endl;
-  struct hostent *host;
-  host = gethostbyname(client_address.c_str());
-  if (host == NULL) {
-    cout << "gethostbyname error" << endl;
-    return 0;
-  }
-  client_address = inet_ntoa(*(struct in_addr *)host->h_addr_list[0]);
-  cout << "client address:"<<client_address << endl;
   cout << server_port << endl;
   cout << "接收开始" << endl;
   std::thread receive_t(recv_thread,server_port,package_size);
@@ -153,7 +156,7 @@ int recv_thread(int port, int package_size) {
   // 指定目标
   target_addr.sin_family = AF_INET;
   target_addr.sin_port = htons(client_port);
-  target_addr.sin_addr.s_addr = inet_addr(client_address.c_str());
+  target_addr.sin_addr.s_addr = inet_addr(real_address(client_address).c_str());
 
   // 接收准备
   socklen_t sender_addrLen = sizeof(sender_addr);
