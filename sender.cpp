@@ -235,15 +235,15 @@ int recv_thread(int port, int package_size) {
     //
     //
     //
-    /* static int cnt = 0; */
-    /* if(cnt++ % 100 == 0) { */
-    /*   std::ifstream ifs("packet_id.json"); */
-    /*   json jf = json::parse(ifs); */
-    /**/
-    /*   jf[to_string(pack.flow_id).c_str()] = global_packet_id; */
-    /*   std::ofstream file("packet_id.json"); */
-    /*   file << jf; */
-    /* } */
+    static int cnt = 0;
+    if(cnt++ % 100 == 0) {
+      std::ifstream ifs("packet_id.json");
+      json jf = json::parse(ifs);
+
+      jf[to_string(pack.flow_id).c_str()] = global_packet_id;
+      std::ofstream file("packet_id.json");
+      file << jf;
+    }
 
     //
     clock_gettime(CLOCK_MONOTONIC, &delay_a);
