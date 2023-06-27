@@ -1,36 +1,11 @@
 // sender中打上时间戳
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <netinet/tcp.h>
-#include <netinet/udp.h>
-#include <semaphore.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/shm.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
 
-#include <algorithm>
-#include <random>
-#include <cstring>
-#include <fstream>
-#include <iomanip>
-#include <chrono>
-#include <ctime>
-#include <iostream>
-#include <thread>
-#include <vector>
-
+#include "header.h"
 #include "json.hpp"
 using namespace std;
 using json = nlohmann::json;
-#define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
+// #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
 #define INT_MAX 99999999
-//#define RECEIVER_ADDRESS "172.17.0.55" // 目的地址
 bool print_log = true;
 int print_cnt = 0;
 
