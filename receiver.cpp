@@ -1,3 +1,5 @@
+// 网页 23100 C 23200 S
+// 短消息 C1：23100 C2：23200 S-C1:23300 S-C2:23400
 #include "header.h"
 #include "json.hpp"
 using namespace std;
@@ -132,7 +134,6 @@ public:
   void print_head_msg(my_package* ptr) {
     cout << "head: " << ptr->tunnel_id << " " << ptr->source_module_id << " ";
     cout << ptr->source_user_id << " ";
-    cout << ptr->source_module_id << " ";
     cout << ptr->dest_user_id << " ";
     cout << ptr->flow_id << " ";
     cout << ptr->service_id << " ";
@@ -293,22 +294,40 @@ public:
         }
       }
 
-      if(ptr->source_module_id == 100) {
-        // 客户端发送给服务器
-        cout << "客户端发送给服务器" << endl;
-        sockaddr_in duplex_target_addr = get_sockaddr_in(real_address(duplex_client_address), duplex_client_port);
-        error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
-        if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-      } else if(ptr->source_module_id == 200) {
-        // 服务器发送给客户端
-        cout << "服务器发送给客户端" << endl;
-        cout << duplex_client_address << " " << duplex_client_port << endl;
-        sockaddr_in duplex_target_addr = get_sockaddr_in(real_address(duplex_server_address), duplex_server_port);
-        error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
-        if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
+      if(ptr->tunnel_id == 6) { // 网页
+        if(ptr->source_module_id == 100) {
+          // 客户端发送给服务器
+          cout << "网页:客户端发送给服务器" << endl;
+          sockaddr_in duplex_target_addr = get_sockaddr_in(real_address(duplex_client_address), duplex_client_port);
+          error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
+          if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
+        } else if(ptr->source_module_id == 200) {
+          // 服务器发送给客户端
+          cout << "网页：服务器发送给客户端" << endl;
+          cout << duplex_client_address << " " << duplex_client_port << endl;
+          sockaddr_in duplex_target_addr = get_sockaddr_in(real_address(duplex_server_address), duplex_server_port);
+          error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
+          if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
+        }
+      } else if(ptr->tunnel_id == 3) { // 短消息
+        cout << "短消息" << endl;
+        cout << (ptr->source_module_id) << " " << endl;
+        if(ptr->source_module_id == 100) {
+          // 客户端发送给服务器
+          cout << "短消息：客户端发送给服务器" << endl;
+          sockaddr_in duplex_target_addr = get_sockaddr_in(real_address(string("real-data-back-chat")), 23100);
+          error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
+          if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
+        } else if(ptr->source_module_id == 200) {
+          // 服务器发送给客户端
+          cout << "短消息: 服务器发送给客户端" << endl;
+          cout << duplex_client_address << " " << duplex_client_port << endl;
+          sockaddr_in duplex_target_addr = get_sockaddr_in(real_address(string("real-data-back-chat")), 23200);
+          error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
+          if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
+        }
       }
     }
-    // sleep(1);
     return 0;
   }
 

@@ -1,13 +1,37 @@
 // sender中打上时间戳
-// tunnel_id 用来当作send_type
 
 #include "header.h"
 #include "json.hpp"
 using namespace std;
 using json = nlohmann::json;
 // #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
+#define INT_MAX 99999999
 bool print_log = true;
 int print_cnt = 0;
+
+struct my_package {
+  uint32_t tunnel_id;
+  uint32_t source_module_id;
+  uint16_t source_user_id;
+  uint16_t dest_user_id;
+  uint32_t flow_id;
+  uint32_t service_id;
+  uint32_t qos_id;
+  uint32_t packet_id;
+  timespec timestamp;
+  uint32_t ext_flag;
+};
+
+struct control_message {
+  uint32_t  total_loss=0;
+  uint32_t  recent_loss=0;
+  uint32_t  max_delay;
+  uint32_t  min_delay;
+  uint32_t  avg_delay;
+  uint32_t  avg_speed=0;
+  uint32_t  unused2=0;
+  uint32_t  unused3=0;
+};
 
 uint32_t global_packet_id = 0;
 int recv_thread(int port, int package_size);
@@ -26,9 +50,6 @@ my_package pack;
 string client_address;
 string json_file_name;
 
-string duplex_server_address, duplex_client_address;
-int duplex_server_port, duplex_client_port;
-
 string real_address(string address) {
   struct hostent *host;
   host = gethostbyname(address.c_str());
@@ -41,21 +62,31 @@ string real_address(string address) {
 
 int main(int argc, char *argv[]) {
   client_address = argv[1];
-  global_packet_id = stoi(string(argv[2]));
+  json_file_name = argv[2];
   client_init();
   /* global_packet_id = stoi(string(argv[2])); */
-  // std::ifstream ifs("packet_id.json");
-  // json jf = json::parse(ifs);
-  // global_packet_id = jf[to_string(pack.flow_id).c_str()];
+  /* global_packet_id = stoi(string(argv[2])); */
 
   cout << "client address:" << client_address << endl;
+  // struct hostent *host;
+  // host = gethostbyname(client_address.c_str());
+  // if (host == NULL) {
+  //   cout << "gethostbyname error" << endl;
+  //   return 0;
+  // }
+  // client_address = inet_ntoa(*(struct in_addr *)host->h_addr_list[0]);
+  // cout << "client address:"<<client_address << endl;
   cout << server_port << endl;
+  sleep(1);
   cout << "接收开始" << endl;
-  recv_thread(server_port,package_size);
+  std::thread receive_t(recv_thread,server_port,package_size);
+  while (1) {
+    sleep(1);
+  }
 }
 
 void client_init() {
-  ifstream srcFile("./init.json", ios::binary);
+  ifstream srcFile(json_file_name, ios::binary);
   if (!srcFile.is_open()) {
     cout << "Fail to open src.json" << endl;
     return;
@@ -64,7 +95,6 @@ void client_init() {
   srcFile >> j;
   pack.source_user_id = j["source_id"];
   pack.source_module_id = j["source_module_id"];
-  pack.tunnel_id = j["send_type"];
   pack.dest_user_id = j["dest_id"];
   pack.flow_id = j["flow_id"];
   package_num = j["package_num"];
@@ -74,12 +104,8 @@ void client_init() {
   client_port = j["client_port"];
   report_interval = j["report_interval"];
   video_in = j["video_in"];
-  duplex_client_address = j["duplex_client_address"];
-  duplex_server_address = j["duplex_server_address"];
-  duplex_client_port = j["duplex_client_port"];
-  duplex_server_port = j["duplex_server_port"];
   auto_send = j["auto_send"];
-  send_type = j["send_type"];
+  send_type = j["type"];
   srcFile.close();
 
   if(pack.source_user_id == 33000 || pack.dest_user_id == 33000) {
@@ -88,43 +114,16 @@ void client_init() {
   return;
 }
 
-int get_init_socket(string address, int port) {
-  int my_socket;
-  sockaddr_in my_addr;
-  my_socket = socket(AF_INET, SOCK_DGRAM, 0);
-  if(port == -1) {
-    return my_socket;
-  }
-  my_addr.sin_family = AF_INET;
-  my_addr.sin_port = htons(port);
-  my_addr.sin_addr.s_addr = inet_addr(address.c_str());
-  // 绑定端口
-  bind(my_socket, (sockaddr *)&my_addr, sizeof(my_addr));
-  return my_socket;
-}
-
-
-sockaddr_in get_sockaddr_in(string address, int port) {
-  sockaddr_in target_addr;
-  target_addr.sin_family = AF_INET;
-  target_addr.sin_port = htons(port);
-  target_addr.sin_addr.s_addr = inet_addr(address.c_str());
-  return target_addr;
-}
-
-
 int recv_thread(int port, int package_size) {
   int num = 0;
   // socket初始化
   int recv_socket;
   sockaddr_in recv_addr, sender_addr;
-
-  if(send_type == 3 || send_type == 6) {
-    auto port = (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port);
-    recv_socket = get_init_socket("0.0.0.0", port);
-  } else if (send_type == 4) {
-    recv_socket = get_init_socket("0.0.0.0", video_in);
-  }
+  recv_socket = socket(AF_INET, SOCK_DGRAM, 0);
+  recv_addr.sin_family = AF_INET;
+  recv_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
+  recv_addr.sin_port = htons(video_in);
+  bind(recv_socket, (sockaddr *)&recv_addr, sizeof(recv_addr));
 
   int my_socket;
   sockaddr_in target_addr, my_addr;
@@ -168,33 +167,13 @@ int recv_thread(int port, int package_size) {
       readLen = 1200;
       memset(buffer, 1, 1200);
       std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
-    } else if(send_type == 4) {
-      // 视频流
-      readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-      strcat(package_head, buffer); // something wrong
-      for(int i = 0; i < sizeof(buffer); ++i) {
-        package_head[i + sizeof(my_package)] = buffer[i];
-      }
-    } else if(send_type == 3) {
-      // 短消息
-      cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
+    } else if(send_type == 5) { // 双向业务，接收转发来的client
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
       strcat(package_head,buffer); // something wrong
       for(int i = 0; i < sizeof(buffer); ++i) {
         package_head[i + sizeof(my_package)] = buffer[i];
       }
-      cout << "received: 短消息 " << readLen << endl;
-    } else if(send_type == 6) { // 双向业务，接收转发来的client
-      cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
-
-      readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-      strcat(package_head,buffer); // something wrong
-      for(int i = 0; i < sizeof(buffer); ++i) {
-        package_head[i + sizeof(my_package)] = buffer[i];
-      }
-      cout << "received: 网页流 " << readLen << endl;
-    } else if(send_type == 10) {
-      return -1;
+      cout << "received: " << readLen << endl;
     } else { // 接受真正的视频流
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
       strcat(package_head,buffer); // something wrong
@@ -212,7 +191,6 @@ int recv_thread(int port, int package_size) {
     ptr->timestamp = now;  // 将 timestamp 赋值为新的值
     ptr->source_user_id = pack.source_user_id;
     ptr->source_module_id = pack.source_module_id;
-    ptr->tunnel_id = pack.tunnel_id;
     ptr->dest_user_id = pack.dest_user_id;
     ptr->flow_id = pack.flow_id;
     ptr->packet_id = global_packet_id++;
@@ -270,6 +248,5 @@ void data_generate(char *package_head)
   temp->source_user_id = pack.source_user_id;
   temp->dest_user_id = pack.dest_user_id;
   temp->source_module_id = pack.source_module_id;
-  temp->tunnel_id = pack.tunnel_id;
   return;
 }
