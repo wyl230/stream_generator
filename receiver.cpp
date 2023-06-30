@@ -298,14 +298,14 @@ public:
         if(ptr->source_module_id == 100) {
           // 客户端发送给服务器
           cout << "网页:客户端发送给服务器" << endl;
-          sockaddr_in duplex_target_addr = get_sockaddr_in(real_address('real-data-back'), 23101);
+          sockaddr_in duplex_target_addr = get_sockaddr_in(real_address("real-data-back"), 23101);
           error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
           if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
         } else if(ptr->source_module_id == 200) {
           // 服务器发送给客户端
           cout << "网页：服务器发送给客户端" << endl;
           cout << duplex_client_address << " " << 23201 << endl;
-          sockaddr_in duplex_target_addr = get_sockaddr_in(real_address('real-data-back'), 23201);
+          sockaddr_in duplex_target_addr = get_sockaddr_in(real_address("real-data-back"), 23201);
           error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
           if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
         }
