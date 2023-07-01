@@ -30,13 +30,13 @@ public:
   }
 
   timespec last_time;
-  int package_size = 2048, package_speed, delay, report_interval;
+  int package_size = 48048, package_speed, delay, report_interval;
   long package_num;
   int server_port, video_out;
   int control_port;
   string client_address;  // 初始发送参数，在程序开始时指定
   string control_address;  // 初始发送参数，在程序开始时指定
-  char datagram[2048];
+  char datagram[48048];
   my_package pack;
   string duplex_server_address, duplex_client_address;
   int duplex_server_port, duplex_client_port;
@@ -81,7 +81,7 @@ public:
   }
 
   void set_header() {
-    memset(datagram, 0, 2048);  // zero out the packet buffer
+    memset(datagram, 0, 10000);  // zero out the packet buffer
     char *data = datagram;
     my_package *temp = (my_package *)data;
     temp->source_user_id = pack.source_user_id;

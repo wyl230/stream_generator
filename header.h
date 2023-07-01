@@ -33,10 +33,12 @@ const int max_num_of_packet_id_allowed = 5000;
 int cur_num_of_packet_id_allowed = 0;
 
 struct my_package {
+  uint32_t source_id; // ue id 0 
+  uint32_t destination_ip; // 192.168.1.0 
   uint32_t tunnel_id;
   uint32_t source_module_id;
-  uint16_t source_user_id;
-  uint16_t dest_user_id;
+  uint16_t source_user_id; // 14
+  uint16_t dest_user_id; // 15
   uint32_t flow_id;
   uint32_t service_id;
   uint32_t qos_id;
@@ -44,6 +46,7 @@ struct my_package {
   timespec timestamp;
   uint32_t ext_flag;
 };
+
 
 struct control_message {
   uint32_t  total_loss=0;

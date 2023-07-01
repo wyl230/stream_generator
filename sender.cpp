@@ -14,14 +14,14 @@ int recv_thread(int port, int package_size);
 void client_init();
 
 void data_generate(char *package_head);
-int package_size = 2048, package_speed, delay, report_interval;
+int package_size = 20480, package_speed, delay, report_interval;
 long package_num;
 int client_port, video_in;
 bool auto_send = false;
 bool send_to_core_net = false;
 int send_type = 0; // 1 恒比特 2 变比特 
 int control_port, server_port;// client:接入网 server：本pod接收程序 control；控制程序
-char datagram[2048];
+char datagram[20480];
 my_package pack;
 string client_address;
 string json_file_name;
@@ -54,13 +54,23 @@ int main(int argc, char *argv[]) {
   recv_thread(server_port,package_size);
 }
 
+//把字符串的ip转换成uint32_t
+inline uint32_t str_to_ip(const std::string& ip_str) {
+    struct in_addr addr;
+    inet_pton(AF_INET, ip_str.c_str(), &addr);
+    return ntohl(addr.s_addr);
+}
+
 void client_init() {
+  sizeof(timespec);
   ifstream srcFile("./init.json", ios::binary);
   if (!srcFile.is_open()) {
     cout << "Fail to open src.json" << endl;
     return;
   }
   json j;
+  pack.source_id = 0;
+  pack.destination_ip = str_to_ip("192.168.1.0");
   srcFile >> j;
   pack.source_user_id = j["source_id"];
   pack.source_module_id = j["source_module_id"];
@@ -217,7 +227,6 @@ int recv_thread(int port, int package_size) {
     ptr->flow_id = pack.flow_id;
     ptr->packet_id = global_packet_id++;
 
-
     std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
     if(print_log && print_cnt++ % 100 == 0) {
       std::cout << print_cnt << " timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
@@ -267,9 +276,13 @@ int recv_thread(int port, int package_size) {
 void data_generate(char *package_head)
 {
   my_package *temp=(my_package *)package_head;
+  temp->source_id = pack.source_id;
+  temp->packet_id = global_packet_id;
+  temp->destination_ip = pack.destination_ip;
   temp->source_user_id = pack.source_user_id;
   temp->dest_user_id = pack.dest_user_id;
   temp->source_module_id = pack.source_module_id;
   temp->tunnel_id = pack.tunnel_id;
   return;
 }
+
