@@ -139,6 +139,24 @@ sockaddr_in get_sockaddr_in(string address, int port) {
   return target_addr;
 }
 
+void write_to_head(my_package *ptr) {
+  timespec now = {};  // 生成新的 timestamp
+  clock_gettime(CLOCK_REALTIME, &now);
+  ptr->timestamp = now;  // 将 timestamp 赋值为新的值
+  ptr->source_user_id = pack.source_user_id;
+  ptr->source_module_id = pack.source_module_id;
+  ptr->tunnel_id = pack.tunnel_id;
+  ptr->dest_user_id = pack.dest_user_id;
+  ptr->flow_id = pack.flow_id;
+  ptr->packet_id = global_packet_id++;
+  cout << "global_packet_id: " << global_packet_id << ptr->packet_id << endl;
+  cout << ptr->destination_ip << "ip | " << ptr->source_id << endl;
+
+  std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
+  if(print_log && print_cnt++ % 100 == 0) {
+    std::cout << print_cnt << " timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
+  }
+}
 
 int recv_thread(int port, int package_size) {
   int num = 0;
@@ -153,18 +171,8 @@ int recv_thread(int port, int package_size) {
     recv_socket = get_init_socket("0.0.0.0", video_in);
   }
 
-  int my_socket;
-  sockaddr_in target_addr, my_addr;
-  my_socket = socket(AF_INET, SOCK_DGRAM, 0);
-  my_addr.sin_family = AF_INET;
-  my_addr.sin_port = htons(2222);
-  my_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
-  // 绑定端口
-  bind(my_socket, (sockaddr *)&my_addr, sizeof(my_addr));
-  // 指定目标
-  target_addr.sin_family = AF_INET;
-  target_addr.sin_port = htons(client_port);
-  target_addr.sin_addr.s_addr = inet_addr(real_address(client_address).c_str());
+  int my_socket = get_init_socket("0.0.0.0", -1);
+  sockaddr_in target_addr = get_sockaddr_in(real_address(client_address).c_str(), client_port);
 
   // 接收准备
   socklen_t sender_addrLen = sizeof(sender_addr);
@@ -212,6 +220,7 @@ int recv_thread(int port, int package_size) {
       cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
 
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+      strcat(package_head,buffer); // something wrong
       for(int i = 0; i < sizeof(buffer); ++i) {
         package_head[i + sizeof(my_package)] = buffer[i];
       }
@@ -229,22 +238,8 @@ int recv_thread(int port, int package_size) {
     // package_head
     // 加上时间戳
     my_package* ptr = reinterpret_cast<my_package*>(package_head);  // 将其强制转换为my_package指针类型
-    timespec now = {};  // 生成新的 timestamp
-    clock_gettime(CLOCK_REALTIME, &now);
-    ptr->timestamp = now;  // 将 timestamp 赋值为新的值
-    ptr->source_user_id = pack.source_user_id;
-    ptr->source_module_id = pack.source_module_id;
-    ptr->tunnel_id = pack.tunnel_id;
-    ptr->dest_user_id = pack.dest_user_id;
-    ptr->flow_id = pack.flow_id;
-    ptr->packet_id = global_packet_id++;
-    cout << "global_packet_id: " << global_packet_id << ptr->packet_id << endl;
-    cout << ptr->destination_ip << "ip | " << ptr->source_id << endl;
 
-    std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
-    if(print_log && print_cnt++ % 100 == 0) {
-      std::cout << print_cnt << " timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
-    }
+    write_to_head(ptr);
 
     if(send_to_core_net) {
       cout << "发送到核心网，todo" << endl;
@@ -264,15 +259,15 @@ int recv_thread(int port, int package_size) {
       sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
     }
     // 写入packet_id到文件中 json格式 [id: packet_id]
-    // static int cnt = 0;
-    // if(cnt++ % 100 == 0) {
-    //   std::ifstream ifs("packet_id.json");
-    //   json jf = json::parse(ifs);
+    static int cnt = 0;
+    if(cnt++ % 100 == 0) {
+      std::ifstream ifs("packet_id.json");
+      json jf = json::parse(ifs);
 
-    //   jf[to_string(pack.flow_id).c_str()] = global_packet_id;
-    //   std::ofstream file("packet_id.json");
-    //   file << jf;
-    // }
+      jf[to_string(pack.flow_id).c_str()] = global_packet_id;
+      std::ofstream file("packet_id.json");
+      file << jf;
+    }
 
     //
     clock_gettime(CLOCK_MONOTONIC, &delay_a);
