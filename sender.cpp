@@ -54,6 +54,13 @@ int main(int argc, char *argv[]) {
   recv_thread(server_port,package_size);
 }
 
+//把字符串的ip转换成uint32_t
+inline uint32_t str_to_ip(const std::string& ip_str) {
+    struct in_addr addr;
+    inet_pton(AF_INET, ip_str.c_str(), &addr);
+    return ntohl(addr.s_addr);
+}
+
 void client_init() {
   ifstream srcFile("./init.json", ios::binary);
   if (!srcFile.is_open()) {
@@ -120,7 +127,7 @@ int recv_thread(int port, int package_size) {
   sockaddr_in recv_addr, sender_addr;
 
   if(send_type == 3 || send_type == 6) {
-    auto port = (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port);
+    auto port = (pack.source_module_id == 100 ? duplex_client_port : 24000);
     recv_socket = get_init_socket("0.0.0.0", port);
   } else if (send_type == 4) {
     recv_socket = get_init_socket("0.0.0.0", video_in);
@@ -133,7 +140,8 @@ int recv_thread(int port, int package_size) {
   my_addr.sin_port = htons(2222);
   my_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
   // 绑定端口
-  bind(my_socket, (sockaddr *)&my_addr, sizeof(my_addr));
+  // auto ret = bind(my_socket, (sockaddr *)&my_addr, sizeof(my_addr));
+  // cout << "bind" << ret << endl;
   // 指定目标
   target_addr.sin_family = AF_INET;
   target_addr.sin_port = htons(client_port);
@@ -241,17 +249,17 @@ int recv_thread(int port, int package_size) {
     }
     // 写入packet_id到文件中 json格式 [id: packet_id]
     //
-    //
+    // 
     //
     static int cnt = 0;
-    if(cnt++ % 100 == 0) {
-      std::ifstream ifs("packet_id.json");
-      json jf = json::parse(ifs);
+    // if(cnt++ % 100 == 0) {
+    //   std::ifstream ifs("packet_id.json");
+    //   json jf = json::parse(ifs);
 
-      jf[to_string(pack.flow_id).c_str()] = global_packet_id;
-      std::ofstream file("packet_id.json");
-      file << jf;
-    }
+    //   jf[to_string(pack.flow_id).c_str()] = global_packet_id;
+    //   std::ofstream file("packet_id.json");
+    //   file << jf;
+    // }
 
     //
     clock_gettime(CLOCK_MONOTONIC, &delay_a);

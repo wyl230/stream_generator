@@ -29,7 +29,7 @@
 #include <thread>
 #include <vector>
 
-const int max_num_of_packet_id_allowed = 5000;
+const int max_num_of_packet_id_allowed = 50000;
 int cur_num_of_packet_id_allowed = 0;
 
 struct my_package {
