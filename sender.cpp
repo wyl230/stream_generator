@@ -7,6 +7,7 @@ using namespace std;
 using json = nlohmann::json;
 // #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
 bool print_log = true;
+bool debug = false;
 int print_cnt = 0;
 
 uint32_t global_packet_id = 0;
@@ -79,7 +80,6 @@ inline uint32_t str_to_ip(const std::string& ip_str) {
 }
 
 void client_init() {
-  sizeof(timespec);
   ifstream srcFile("./init.json", ios::binary);
   if (!srcFile.is_open()) {
     cout << "Fail to open src.json" << endl;
@@ -160,7 +160,7 @@ int recv_thread(int port, int package_size) {
   my_addr.sin_port = htons(2222);
   my_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
   // 绑定端口
-  bind(my_socket, (sockaddr *)&my_addr, sizeof(my_addr));
+  // bind(my_socket, (sockaddr *)&my_addr, sizeof(my_addr));
   // 指定目标
   target_addr.sin_family = AF_INET;
   target_addr.sin_port = htons(client_port);
@@ -238,11 +238,13 @@ int recv_thread(int port, int package_size) {
     ptr->dest_user_id = pack.dest_user_id;
     ptr->flow_id = pack.flow_id;
     ptr->packet_id = global_packet_id++;
-    cout << "global_packet_id: " << global_packet_id << ptr->packet_id << endl;
-    cout << ptr->destination_ip << "ip | " << ptr->source_id << endl;
+    if(debug) {
+      cout << "global_packet_id: " << global_packet_id << ptr->packet_id << endl;
+      cout << ptr->destination_ip << "ip | " << ptr->source_id << endl;
+    }
 
     std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
-    if(print_log && print_cnt++ % 100 == 0) {
+    if(print_log && print_cnt++ % 100000 == 0) {
       std::cout << print_cnt << " timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
     }
 
@@ -260,7 +262,9 @@ int recv_thread(int port, int package_size) {
         cout <<"核心网发送失败！ sendto() error occurred at package "<< endl;
       }
     } else {
-      print_head_msg(ptr);
+      if(debug) {
+        print_head_msg(ptr);
+      }
       sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
     }
     // 写入packet_id到文件中 json格式 [id: packet_id]
@@ -297,4 +301,3 @@ void data_generate(char *package_head)
   temp->tunnel_id = pack.tunnel_id;
   return;
 }
-

@@ -301,16 +301,12 @@ public:
       if(ptr->tunnel_id == 6) { // 网页
         if(ptr->source_module_id == 100) {
           // 客户端发送给服务器
-
           cout << "网页:客户端发送给服务器" << endl;
           {
             sockaddr_in duplex_target_addr = get_sockaddr_in(real_address("real-data-back"), 23101);
             error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
             if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-
-
           }
-
           {
             sockaddr_in duplex_target_addr = get_sockaddr_in("162.105.85.70", 52700);
             error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
@@ -325,7 +321,6 @@ public:
             sockaddr_in duplex_target_addr = get_sockaddr_in(real_address("real-data-back"), 23201);
             error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
             if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-
           }
           {
             sockaddr_in duplex_target_addr = get_sockaddr_in("162.105.85.70", 52701);
