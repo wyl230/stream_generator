@@ -31,8 +31,6 @@ int duplex_server_port, duplex_client_port;
 
 void print_head_msg(my_package* ptr) {
   cout << "head: ";
-  cout << ptr->source_id << " "; 
-  cout << ptr->destination_ip << " "; 
   cout << ptr->tunnel_id << " "; 
   cout << ptr->source_module_id << " ";
   cout << ptr->source_user_id << " ";
