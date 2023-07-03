@@ -237,7 +237,7 @@ int recv_thread(int port, int package_size) {
 
 
     std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
-    if(print_log && print_cnt++ % 100 == 0) {
+    if(print_log && print_cnt++ % 1000 == 0) {
       std::cout << print_cnt << " timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
     }
 

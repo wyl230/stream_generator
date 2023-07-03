@@ -1,6 +1,6 @@
 {
   "source_id": 153,
-  "source_module_id": 0,
+  "source_module_id": 200,
   "dest_id": 283,
   "package_num": 100,
   "package_speed": 50,
@@ -13,10 +13,11 @@
   "video_out": 3000,
   "report_interval": 1,
   "auto_send": true,
-  "flow_id": 2,
-  "send_type": 1,
+  "flow_id": 234,
+  "send_type": 6,
   "duplex_client_address": "real-data-back",
   "duplex_server_address": "real-data-back",
-  "duplex_client_port": 23100,
-  "duplex_server_port": 23200
+  "duplex_client_port": 23101,
+  "duplex_server_port": 23201,
+  "tunnel_id": 6
 }
