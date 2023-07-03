@@ -14,20 +14,36 @@ int recv_thread(int port, int package_size);
 void client_init();
 
 void data_generate(char *package_head);
-int package_size = 2048, package_speed, delay, report_interval;
+int package_size = 20480, package_speed, delay, report_interval;
 long package_num;
 int client_port, video_in;
 bool auto_send = false;
 bool send_to_core_net = false;
 int send_type = 0; // 1 恒比特 2 变比特 
 int control_port, server_port;// client:接入网 server：本pod接收程序 control；控制程序
-char datagram[2048];
+char datagram[20480];
 my_package pack;
 string client_address;
 string json_file_name;
 
 string duplex_server_address, duplex_client_address;
 int duplex_server_port, duplex_client_port;
+
+void print_head_msg(my_package* ptr) {
+  cout << "head: ";
+  cout << ptr->source_id << " "; 
+  cout << ptr->destination_ip << " "; 
+  cout << ptr->tunnel_id << " "; 
+  cout << ptr->source_module_id << " ";
+  cout << ptr->source_user_id << " ";
+  cout << ptr->dest_user_id << " ";
+  cout << ptr->flow_id << " ";
+  cout << ptr->service_id << " ";
+  cout << ptr->qos_id << " ";
+  cout << ptr->packet_id << " ";
+  cout << ptr->timestamp.tv_sec << "." << ptr->timestamp.tv_nsec << " ";
+  cout << ptr->ext_flag << endl;
+}
 
 string real_address(string address) {
   struct hostent *host;
@@ -58,7 +74,7 @@ int main(int argc, char *argv[]) {
 inline uint32_t str_to_ip(const std::string& ip_str) {
     struct in_addr addr;
     inet_pton(AF_INET, ip_str.c_str(), &addr);
-    return ntohl(addr.s_addr);
+    return htonl(addr.s_addr);
 }
 
 void client_init() {
@@ -127,7 +143,7 @@ int recv_thread(int port, int package_size) {
   sockaddr_in recv_addr, sender_addr;
 
   if(send_type == 3 || send_type == 6) {
-    auto port = (pack.source_module_id == 100 ? duplex_client_port : 24000);
+    auto port = (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port);
     recv_socket = get_init_socket("0.0.0.0", port);
   } else if (send_type == 4) {
     recv_socket = get_init_socket("0.0.0.0", video_in);
@@ -179,7 +195,6 @@ int recv_thread(int port, int package_size) {
     } else if(send_type == 4) {
       // 视频流
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-      strcat(package_head, buffer); // something wrong
       for(int i = 0; i < sizeof(buffer); ++i) {
         package_head[i + sizeof(my_package)] = buffer[i];
       }
@@ -187,7 +202,6 @@ int recv_thread(int port, int package_size) {
       // 短消息
       cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-      strcat(package_head,buffer); // something wrong
       for(int i = 0; i < sizeof(buffer); ++i) {
         package_head[i + sizeof(my_package)] = buffer[i];
       }
@@ -196,7 +210,6 @@ int recv_thread(int port, int package_size) {
       cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
 
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-      strcat(package_head,buffer); // something wrong
       for(int i = 0; i < sizeof(buffer); ++i) {
         package_head[i + sizeof(my_package)] = buffer[i];
       }
@@ -205,7 +218,6 @@ int recv_thread(int port, int package_size) {
       return -1;
     } else { // 接受真正的视频流
       readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-      strcat(package_head,buffer); // something wrong
       for(int i = 0; i < sizeof(buffer); ++i) {
         package_head[i + sizeof(my_package)] = buffer[i];
       }
