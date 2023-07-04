@@ -13,7 +13,7 @@
   "video_out": 3000,
   "report_interval": 1,
   "auto_send": true,
-  "flow_id": 234,
+  "flow_id": 235,
   "send_type": 2,
   "duplex_client_address": "real-data-back",
   "duplex_server_address": "real-data-back",

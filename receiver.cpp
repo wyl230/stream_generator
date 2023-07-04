@@ -182,13 +182,17 @@ public:
     msg.recent_packet_id.push(ptr->packet_id);
     if(cur_num_of_packet_id_allowed > 
     max_num_of_packet_id_allowed) {
-      cout << "cur_num > max_num" << endl;
+      if(should_print_log) {
+        cout << "cur_num > max_num" << endl;
+      }
       auto pop_num = msg.recent_packet_id.size() / 10;
       pop_num = pop_num >= 3 ? pop_num : 0; // 
       for(auto i = 0; i < pop_num; ++i) {
-        msg.recent_packet_id.pop();
+        if(!msg.recent_packet_id.empty()) {
+          msg.recent_packet_id.pop();
+          cur_num_of_packet_id_allowed -= pop_num;
+        }
       }
-      cur_num_of_packet_id_allowed -= pop_num;
     }
   }
 
