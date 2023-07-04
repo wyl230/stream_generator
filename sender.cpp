@@ -169,10 +169,9 @@ int recv_thread(int port, int package_size) {
   int readLen = 0;
   uint32_t cnt_package = 0,recent_package=0;
   uint32_t total_delay;
-  timespec delay_a, delay_b,delay_c;
+  timespec delay_a, delay_c;
   uint32_t max_delay=0,min_delay=INT_MAX,avg_delay=0, recent_delay=0,avg_speed=0;
   delay_a = {0, 0};
-  delay_b = {0, 0};
   delay_c = {0, 0};
   data_generate(package_head);
   while (true) {    
@@ -257,18 +256,17 @@ int recv_thread(int port, int package_size) {
         cout <<"核心网发送失败！ sendto() error occurred at package "<< endl;
       }
     } else {
+      if(should_print_log) {
+        print_head_msg(ptr);
+      }
       static int loss_rate = 0;
-      static int cnt = 0;
+      static uint32_t cnt = 0;
       if(cnt++ % 100 >= loss_rate) {
         sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
       }
     }
-
     // 写入packet_id到文件中 json格式 [id: packet_id]
-    //
-    // 
-    //
-    static int cnt = 0;
+    // static int cnt = 0;
     // if(cnt++ % 100 == 0) {
     //   std::ifstream ifs("packet_id.json");
     //   json jf = json::parse(ifs);

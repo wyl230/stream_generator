@@ -8,6 +8,13 @@ using json = nlohmann::json;
 
 bool should_print_log = false;
 
+void print_log(string s) {
+  if(!should_print_log) {
+    return;
+  }
+  cout << s << endl;
+}
+
 string generateRandomString() {
   const int length = 64;
   const string letters = "0123456789"
@@ -135,8 +142,11 @@ public:
   }
 
   void print_head_msg(my_package* ptr) {
-    if(!should_print_log) return;
-    cout << "head: " << ptr->tunnel_id << " " << ptr->source_module_id << " ";
+    if(!should_print_log) 
+      return;
+    cout << "head: ";
+    cout << ptr->tunnel_id << " ";
+    cout << ptr->source_module_id << " ";
     cout << ptr->source_user_id << " ";
     cout << ptr->dest_user_id << " ";
     cout << ptr->flow_id << " ";
@@ -154,9 +164,6 @@ public:
     msg.max_delay = delay_us;
     msg.min_delay = delay_us;
     msg.byte_num = readLen; // 算上包头
-    while(!msg.recent_packet_id.empty()) {
-      msg.recent_packet_id.pop();
-    }
     if(!timeout) {
       msg.max_packet_id = packet_id;
       msg.total_packet_num = 1;
@@ -173,7 +180,9 @@ public:
     msg.min_delay = min(delay_us, msg.min_delay);
     msg.byte_num += readLen; //  - sizeof(my_package); // no 包头
     msg.max_packet_id = max(msg.max_packet_id, packet_id);
-    if(should_print_log) cout << "max_packet_id" << msg.max_packet_id << endl;
+    if(should_print_log) {
+      cout << "max_packet_id" << msg.max_packet_id << endl;
+    }
     msg.total_packet_num++;
   }
 
@@ -230,7 +239,9 @@ public:
     double time_diff = get_time_diff(ptr->timestamp, now);
 
     uint32_t delay_us = time_diff / 1000;
-    if(should_print_log) cout << "delay us: " << delay_us << endl;
+    if(should_print_log) {
+      cout << "delay us: " << delay_us << endl;
+    }
     // if(delay_us > 1e8) {
     //   delay_us = 0;
     // }
@@ -243,8 +254,6 @@ public:
     }
 
     adjust_packet_id_queue(ptr);
-
-
     if(should_print_log) {
       cout << "now" << now.tv_sec << " || msg: " << flow_msg[ptr->flow_id].last_min_max_delay_record.tv_sec << endl;
       cout << "time diff ai" << get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) << endl;
@@ -262,6 +271,7 @@ public:
       //   value = single_msg_init(delay_us, readLen, ptr->packet_id);
       // }
       flow_msg.clear();
+      cur_num_of_packet_id_allowed = 0;
       // cout << "count: " << flow_msg.count(ptr->flow_id);
     }
   }
@@ -303,8 +313,9 @@ public:
       // strncpy(datagram, buffer + sizeof(my_package), readLen - sizeof(my_package));
       // 发送给VLC 仅此端口为视频业务
       if(ptr->flow_id == 23023) {
-        if(should_print_log)
+        if(should_print_log) {
           cout << "视频发送" << endl;
+        }
         error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
         if (error == -1) {
           perror("sendto");
@@ -357,7 +368,9 @@ public:
       int key = it->first;
       msg_for_each_stream value = it->second;
       auto id_queue = value.recent_packet_id;
-      cout << id_queue.size() << "size" << endl;
+      if(should_print_log) {
+        cout << id_queue.size() << "size" << endl;
+      }
       json packet_id_list_json;
       while (!id_queue.empty()) {
           packet_id_list_json.push_back(id_queue.front());
