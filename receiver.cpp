@@ -154,6 +154,9 @@ public:
     msg.max_delay = delay_us;
     msg.min_delay = delay_us;
     msg.byte_num = readLen; // 算上包头
+    while(!msg.recent_packet_id.empty()) {
+      msg.recent_packet_id.pop();
+    }
     if(!timeout) {
       msg.max_packet_id = packet_id;
       msg.total_packet_num = 1;
