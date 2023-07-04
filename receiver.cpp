@@ -6,6 +6,8 @@ using namespace std;
 using json = nlohmann::json;
 #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
 
+bool should_print_log = false;
+
 string generateRandomString() {
   const int length = 64;
   const string letters = "0123456789"
@@ -75,6 +77,7 @@ public:
     duplex_server_address = j["duplex_server_address"];
     duplex_client_port = j["duplex_client_port"];
     duplex_server_port = j["duplex_server_port"];
+    should_print_log = j["should_print_log"];
     
     srcFile.close();
     return;
@@ -132,6 +135,7 @@ public:
   }
 
   void print_head_msg(my_package* ptr) {
+    if(!should_print_log) return;
     cout << "head: " << ptr->tunnel_id << " " << ptr->source_module_id << " ";
     cout << ptr->source_user_id << " ";
     cout << ptr->dest_user_id << " ";
@@ -166,17 +170,19 @@ public:
     msg.min_delay = min(delay_us, msg.min_delay);
     msg.byte_num += readLen; //  - sizeof(my_package); // no 包头
     msg.max_packet_id = max(msg.max_packet_id, packet_id);
-    cout << "max_packet_id" << msg.max_packet_id << endl;
+    if(should_print_log) cout << "max_packet_id" << msg.max_packet_id << endl;
     msg.total_packet_num++;
   }
 
   void adjust_packet_id_queue(my_package* ptr) {
     cur_num_of_packet_id_allowed++; // 如果超过了，就缩减10% 
+    // cout << "cur_num_of_packet_id_allowed" << cur_num_of_packet_id_allowed << endl;
     // 添加id序列
     auto &msg = flow_msg[ptr->flow_id];
     msg.recent_packet_id.push(ptr->packet_id);
     if(cur_num_of_packet_id_allowed > 
     max_num_of_packet_id_allowed) {
+      cout << "cur_num > max_num" << endl;
       auto pop_num = msg.recent_packet_id.size() / 10;
       pop_num = pop_num >= 3 ? pop_num : 0; // 
       for(auto i = 0; i < pop_num; ++i) {
@@ -193,11 +199,13 @@ public:
   }
 
   void print_timestamp(my_package* ptr) {
+    if(!should_print_log) return;
     std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
     std::cout << "timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
   }
 
   void print_msg(my_package* ptr) {
+    if(!should_print_log) return;
     auto &msg = flow_msg[ptr->flow_id];
     cout << "业务id: " << ptr->flow_id << ": delays: max: " << msg.max_delay << ", min: " << msg.min_delay << ", byte_num: " << msg.byte_num << ", packet_num: " << msg.packet_num << endl;
 
@@ -215,7 +223,7 @@ public:
     double time_diff = get_time_diff(ptr->timestamp, now);
 
     uint32_t delay_us = time_diff / 1000;
-    cout << "delay us: " << delay_us << endl;
+    if(should_print_log) cout << "delay us: " << delay_us << endl;
     // if(delay_us > 1e8) {
     //   delay_us = 0;
     // }
@@ -228,11 +236,13 @@ public:
     }
 
     adjust_packet_id_queue(ptr);
-    cout << "now" << now.tv_sec << " || msg: " << flow_msg[ptr->flow_id].last_min_max_delay_record.tv_sec << endl;
-    cout << "time diff ai" << get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) << endl;
 
-    print_msg(ptr);
 
+    if(should_print_log) {
+      cout << "now" << now.tv_sec << " || msg: " << flow_msg[ptr->flow_id].last_min_max_delay_record.tv_sec << endl;
+      cout << "time diff ai" << get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) << endl;
+      print_msg(ptr);
+    }
     if(flow_msg.count(ptr->flow_id) && get_time_diff(last_time, get_current_time()) > 1e9) {
       last_time = get_current_time();
       // 报告，超过一定时间了，除去最大id和包总数，全部初始化(所有id都要初始化)
@@ -286,7 +296,8 @@ public:
       // strncpy(datagram, buffer + sizeof(my_package), readLen - sizeof(my_package));
       // 发送给VLC 仅此端口为视频业务
       if(ptr->flow_id == 23023) {
-        cout << "视频发送" << endl;
+        if(should_print_log)
+          cout << "视频发送" << endl;
         error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
         if (error == -1) {
           perror("sendto");
@@ -336,10 +347,13 @@ public:
       int key = it->first;
       msg_for_each_stream value = it->second;
       auto id_queue = value.recent_packet_id;
+      cout << id_queue.size() << "size" << endl;
       json packet_id_list_json;
       while (!id_queue.empty()) {
           packet_id_list_json.push_back(id_queue.front());
-          cout << id_queue.front() << " emmmmm " << endl;
+          if(should_print_log) {
+            cout << id_queue.front() << " q " << endl;
+          }
           id_queue.pop();
       }
 

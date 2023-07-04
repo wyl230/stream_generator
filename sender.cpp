@@ -6,7 +6,7 @@
 using namespace std;
 using json = nlohmann::json;
 // #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
-bool print_log = true;
+bool should_print_log = true;
 int print_cnt = 0;
 
 uint32_t global_packet_id = 0;
@@ -73,6 +73,7 @@ inline uint32_t str_to_ip(const std::string& ip_str) {
     struct in_addr addr;
     inet_pton(AF_INET, ip_str.c_str(), &addr);
     return htonl(addr.s_addr);
+    // return ntohl(addr.s_addr);
 }
 
 void client_init() {
@@ -83,6 +84,7 @@ void client_init() {
   }
   json j;
   srcFile >> j;
+  should_print_log = j["should_print_log"];
   pack.source_user_id = j["source_id"];
   pack.source_module_id = j["source_module_id"];
   pack.tunnel_id = j["send_type"];
@@ -154,8 +156,7 @@ int recv_thread(int port, int package_size) {
   my_addr.sin_port = htons(2222);
   my_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
   // 绑定端口
-  // auto ret = bind(my_socket, (sockaddr *)&my_addr, sizeof(my_addr));
-  // cout << "bind" << ret << endl;
+  // bind(my_socket, (sockaddr *)&my_addr, sizeof(my_addr));
   // 指定目标
   target_addr.sin_family = AF_INET;
   target_addr.sin_port = htons(client_port);
@@ -234,10 +235,11 @@ int recv_thread(int port, int package_size) {
     ptr->dest_user_id = pack.dest_user_id;
     ptr->flow_id = pack.flow_id;
     ptr->packet_id = global_packet_id++;
+    // cout << global_packet_id << endl;
 
 
     std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
-    if(print_log && print_cnt++ % 1000 == 0) {
+    if(should_print_log && print_cnt++ % 1000 == 0) {
       std::cout << print_cnt << " timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
     }
 
@@ -255,8 +257,13 @@ int recv_thread(int port, int package_size) {
         cout <<"核心网发送失败！ sendto() error occurred at package "<< endl;
       }
     } else {
-      sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+      static int loss_rate = 0;
+      static int cnt = 0;
+      if(cnt++ % 100 >= loss_rate) {
+        sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+      }
     }
+
     // 写入packet_id到文件中 json格式 [id: packet_id]
     //
     // 
