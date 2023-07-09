@@ -35,6 +35,7 @@ int cur_num_of_packet_id_allowed = 0;
 struct my_package {
   uint32_t source_id; // ue id 0 
   uint32_t destination_ip; // 192.168.1.0 
+  uint32_t if_timestamp = 0; // 192.168.1.0 
   uint32_t tunnel_id;
   uint32_t source_module_id;
   uint16_t source_user_id; // 14

@@ -6,6 +6,15 @@ using namespace std;
 using json = nlohmann::json;
 #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
 
+bool should_print_log = false;
+
+void print_log(string s) {
+  if(!should_print_log) {
+    return;
+  }
+  cout << s << endl;
+}
+
 string generateRandomString() {
   const int length = 64;
   const string letters = "0123456789"
@@ -75,6 +84,7 @@ public:
     duplex_server_address = j["duplex_server_address"];
     duplex_client_port = j["duplex_client_port"];
     duplex_server_port = j["duplex_server_port"];
+    should_print_log = j["should_print_log"];
     
     srcFile.close();
     return;
@@ -132,6 +142,8 @@ public:
   }
 
   void print_head_msg(my_package* ptr) {
+    if(!should_print_log) 
+      return;
     cout << "head: ";
     cout << ptr->source_id << " "; 
     cout << ptr->destination_ip << " "; 
@@ -162,7 +174,7 @@ public:
     return msg;
   }
 
-  void update_single_msg(uint32_t flow_id, uint32_t delay_us, uint32_t packet_id, int readLen) {
+  void update_single_msg(uint32_t flow_id, uint32_t delay_us, uint32_t packet_id, int readLen, int colored) {
     auto &msg = flow_msg[flow_id];
     msg.packet_num++;
     msg.sum_delay += delay_us;
@@ -170,7 +182,9 @@ public:
     msg.min_delay = min(delay_us, msg.min_delay);
     msg.byte_num += readLen; //  - sizeof(my_package); // no 包头
     msg.max_packet_id = max(msg.max_packet_id, packet_id);
-    cout << "max_packet_id" << msg.max_packet_id << endl;
+    if(should_print_log) {
+      cout << "max_packet_id" << msg.max_packet_id << endl;
+    }
     msg.total_packet_num++;
   }
 
@@ -181,12 +195,17 @@ public:
     msg.recent_packet_id.push(ptr->packet_id);
     if(cur_num_of_packet_id_allowed > 
     max_num_of_packet_id_allowed) {
+      if(should_print_log) {
+        cout << "cur_num > max_num" << endl;
+      }
       auto pop_num = msg.recent_packet_id.size() / 10;
       pop_num = pop_num >= 3 ? pop_num : 0; // 
       for(auto i = 0; i < pop_num; ++i) {
-        msg.recent_packet_id.pop();
+        if(!msg.recent_packet_id.empty()) {
+          msg.recent_packet_id.pop();
+          cur_num_of_packet_id_allowed -= pop_num;
+        }
       }
-      cur_num_of_packet_id_allowed -= pop_num;
     }
   }
 
@@ -197,16 +216,21 @@ public:
   }
 
   void print_timestamp(my_package* ptr) {
+    if(!should_print_log) return;
     std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
     std::cout << "timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
   }
 
   void print_msg(my_package* ptr) {
+    if(!should_print_log) return;
     auto &msg = flow_msg[ptr->flow_id];
     cout << "业务id: " << ptr->flow_id << ": delays: max: " << msg.max_delay << ", min: " << msg.min_delay << ", byte_num: " << msg.byte_num << ", packet_num: " << msg.packet_num << endl;
 
   }
 
+  void update_colored_packet_num(my_package* ptr) {
+    
+  }
 
   void update_flow_msg(my_package* ptr, int readLen) {
     // 计算延迟 ns
@@ -219,7 +243,9 @@ public:
     double time_diff = get_time_diff(ptr->timestamp, now);
 
     uint32_t delay_us = time_diff / 1000;
-    cout << "delay us: " << delay_us << endl;
+    if(should_print_log) {
+      cout << "delay us: " << delay_us << endl;
+    }
     // if(delay_us > 1e8) {
     //   delay_us = 0;
     // }
@@ -228,15 +254,15 @@ public:
       cout << "单条业务流初始化" << endl;
       flow_msg[ptr->flow_id] = single_msg_init(delay_us, readLen, ptr->packet_id);
     } else { // 有了，则更新
-      update_single_msg(ptr->flow_id, delay_us, ptr->packet_id, readLen); 
+      update_single_msg(ptr->flow_id, delay_us, ptr->packet_id, readLen, ptr->ext_flag); 
     }
 
     adjust_packet_id_queue(ptr);
-    cout << "now" << now.tv_sec << " || msg: " << flow_msg[ptr->flow_id].last_min_max_delay_record.tv_sec << endl;
-    cout << "time diff ai" << get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) << endl;
-
-    print_msg(ptr);
-
+    if(should_print_log) {
+      cout << "now" << now.tv_sec << " || msg: " << flow_msg[ptr->flow_id].last_min_max_delay_record.tv_sec << endl;
+      cout << "time diff ai" << get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) << endl;
+      print_msg(ptr);
+    }
     if(flow_msg.count(ptr->flow_id) && get_time_diff(last_time, get_current_time()) > 1e9) {
       last_time = get_current_time();
       // 报告，超过一定时间了，除去最大id和包总数，全部初始化(所有id都要初始化)
@@ -249,6 +275,7 @@ public:
       //   value = single_msg_init(delay_us, readLen, ptr->packet_id);
       // }
       flow_msg.clear();
+      cur_num_of_packet_id_allowed = 0;
       // cout << "count: " << flow_msg.count(ptr->flow_id);
     }
   }
@@ -290,7 +317,9 @@ public:
       // strncpy(datagram, buffer + sizeof(my_package), readLen - sizeof(my_package));
       // 发送给VLC 仅此端口为视频业务
       if(ptr->flow_id == 23023) {
-        cout << "视频发送" << endl;
+        if(should_print_log) {
+          cout << "视频发送" << endl;
+        }
         error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
         if (error == -1) {
           perror("sendto");
@@ -298,6 +327,8 @@ public:
         }
       }
 
+
+      // cout << ptr->tunnel_id << "tunnel id" << endl;
       if(ptr->tunnel_id == 6) { // 网页
         if(ptr->source_module_id == 100) {
           // 客户端发送给服务器
@@ -352,23 +383,27 @@ public:
             if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
           }
         }
-
-        // 以下为需要抓包的版本
-        // if(ptr->source_module_id == 100) {
-        //   // 客户端发送给服务器
-        //   cout << "短消息：客户端发送给服务器" << endl;
-        //   sockaddr_in duplex_target_addr = get_sockaddr_in(real_address(string("real-data-back-chat")), 23100);
-        //   error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
-        //   if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-        // } else if(ptr->source_module_id == 200) {
-        //   // 服务器发送给客户端
-        //   cout << "短消息: 服务器发送给客户端" << endl;
-        //   cout << duplex_client_address << " " << duplex_client_port << endl;
-        //   sockaddr_in duplex_target_addr = get_sockaddr_in(real_address(string("real-data-back-chat")), 23200);
-        //   error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
-        //   if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-        // }
-      }
+      } else if(ptr->tunnel_id >= 11 && ptr->tunnel_id <= 13) {
+          int type = ptr->tunnel_id;
+          cout << "视频会议" << endl;
+          cout << ptr->source_module_id << "module id" << endl;
+          if(ptr->source_module_id == 100) {
+            // 客户端发送给服务器
+            cout << "视频会议：客户端发送给服务器" << endl;
+            sockaddr_in duplex_target_addr = get_sockaddr_in("162.105.85.110", 52700);
+            error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
+            if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
+          } else if(ptr->source_module_id == 200) {
+            // 服务器发送给客户端
+            cout << "视频会议: 服务器发送给客户端" << endl;
+            cout << duplex_client_address << " " << duplex_client_port << endl;
+            auto port = 52700 + (type % 10 - 1) % 3 + 1;
+            cout << "video port" << port << endl;
+            sockaddr_in duplex_target_addr = get_sockaddr_in("162.105.85.70", port);
+            error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
+            if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
+          }
+        }
     }
     return 0;
   }
@@ -379,9 +414,15 @@ public:
       int key = it->first;
       msg_for_each_stream value = it->second;
       auto id_queue = value.recent_packet_id;
+      if(should_print_log) {
+        cout << id_queue.size() << "size" << endl;
+      }
       json packet_id_list_json;
       while (!id_queue.empty()) {
           packet_id_list_json.push_back(id_queue.front());
+          if(should_print_log) {
+            cout << id_queue.front() << " q " << endl;
+          }
           id_queue.pop();
       }
 
@@ -396,7 +437,7 @@ public:
         {"max_packet_id", value.max_packet_id},
         {"total_packet_num", value.total_packet_num},
         {"pod_id", receiver_id},
-        {"id_list", packet_id_list_json}
+        {"id_list", packet_id_list_json},
       };
       j[to_string(key)] = j2;
     }

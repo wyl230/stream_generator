@@ -6,8 +6,7 @@
 using namespace std;
 using json = nlohmann::json;
 // #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
-bool print_log = true;
-bool debug = false;
+bool should_print_log = true;
 int print_cnt = 0;
 
 uint32_t global_packet_id = 0;
@@ -86,13 +85,14 @@ void client_init() {
     return;
   }
   json j;
-  pack.source_id = 0;
-  pack.destination_ip = str_to_ip("192.168.1.0");
   srcFile >> j;
+  should_print_log = j["should_print_log"];
   pack.source_user_id = j["source_id"];
   pack.source_module_id = j["source_module_id"];
   pack.tunnel_id = j["send_type"];
   pack.dest_user_id = j["dest_id"];
+  pack.source_id = pack.source_user_id;
+  pack.destination_ip = str_to_ip(string("192.168.") + to_string(pack.dest_user_id) + string(".1"));
   pack.flow_id = j["flow_id"];
   package_num = j["package_num"];
   package_speed = j["package_speed"];
@@ -146,7 +146,7 @@ int recv_thread(int port, int package_size) {
   int recv_socket;
   sockaddr_in recv_addr, sender_addr;
 
-  if(send_type == 3 || send_type == 6) {
+  if(send_type == 3 || send_type == 6 || (send_type >= 11 && send_type <= 13)) {
     auto port = (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port);
     recv_socket = get_init_socket("0.0.0.0", port);
   } else if (send_type == 4) {
@@ -173,7 +173,7 @@ int recv_thread(int port, int package_size) {
   int readLen = 0;
   uint32_t cnt_package = 0,recent_package=0;
   uint32_t total_delay;
-  timespec delay_a ,delay_c;
+  timespec delay_a, delay_c;
   uint32_t max_delay=0,min_delay=INT_MAX,avg_delay=0, recent_delay=0,avg_speed=0;
   delay_a = {0, 0};
   delay_c = {0, 0};
@@ -216,6 +216,13 @@ int recv_thread(int port, int package_size) {
         package_head[i + sizeof(my_package)] = buffer[i];
       }
       cout << "received: 网页流 " << readLen << endl;
+    } else if(send_type >= 11 && send_type <= 13) { // 视频会议
+      cout << "视频会议 recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
+      readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+      for(int i = 0; i < sizeof(buffer); ++i) {
+        package_head[i + sizeof(my_package)] = buffer[i];
+      }
+      cout << "received: 视频会议 " << readLen << endl;
     } else if(send_type == 10) {
       return -1;
     } else { // 接受真正的视频流
@@ -238,13 +245,13 @@ int recv_thread(int port, int package_size) {
     ptr->dest_user_id = pack.dest_user_id;
     ptr->flow_id = pack.flow_id;
     ptr->packet_id = global_packet_id++;
-    if(debug) {
+    if(should_print_log) {
       cout << "global_packet_id: " << global_packet_id << ptr->packet_id << endl;
       cout << ptr->destination_ip << "ip | " << ptr->source_id << endl;
     }
 
     std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
-    if(print_log && print_cnt++ % 100000 == 0) {
+    if(should_print_log && print_cnt++ % 1000 == 0) {
       std::cout << print_cnt << " timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
     }
 
@@ -262,10 +269,14 @@ int recv_thread(int port, int package_size) {
         cout <<"核心网发送失败！ sendto() error occurred at package "<< endl;
       }
     } else {
-      if(debug) {
+      if(should_print_log) {
         print_head_msg(ptr);
       }
-      sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+      static int loss_rate = 0;
+      static uint32_t cnt = 0;
+      if(cnt++ % 100 >= loss_rate) {
+        sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+      }
     }
     // 写入packet_id到文件中 json格式 [id: packet_id]
     // static int cnt = 0;
@@ -293,7 +304,6 @@ void data_generate(char *package_head)
 {
   my_package *temp=(my_package *)package_head;
   temp->source_id = pack.source_id;
-  temp->packet_id = global_packet_id;
   temp->destination_ip = pack.destination_ip;
   temp->source_user_id = pack.source_user_id;
   temp->dest_user_id = pack.dest_user_id;
