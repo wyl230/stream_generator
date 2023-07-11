@@ -8,6 +8,7 @@ using json = nlohmann::json;
 // #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
 bool should_print_log = true;
 int print_cnt = 0;
+int loss_rate = 0;
 
 uint32_t global_packet_id = 0;
 int recv_thread(int port, int package_size);
@@ -86,6 +87,7 @@ void client_init() {
   }
   json j;
   srcFile >> j;
+  loss_rate = j["loss_rate"];
   should_print_log = j["should_print_log"];
   pack.source_user_id = j["source_id"];
   pack.source_module_id = j["source_module_id"];
@@ -130,7 +132,6 @@ int get_init_socket(string address, int port) {
   return my_socket;
 }
 
-
 sockaddr_in get_sockaddr_in(string address, int port) {
   sockaddr_in target_addr;
   target_addr.sin_family = AF_INET;
@@ -138,7 +139,6 @@ sockaddr_in get_sockaddr_in(string address, int port) {
   target_addr.sin_addr.s_addr = inet_addr(address.c_str());
   return target_addr;
 }
-
 
 int recv_thread(int port, int package_size) {
   int num = 0;
@@ -240,6 +240,7 @@ int recv_thread(int port, int package_size) {
     clock_gettime(CLOCK_REALTIME, &now);
     ptr->timestamp = now;  // 将 timestamp 赋值为新的值
     ptr->source_user_id = pack.source_user_id;
+    // puts("99");
     ptr->source_module_id = pack.source_module_id;
     ptr->tunnel_id = pack.tunnel_id;
     ptr->dest_user_id = pack.dest_user_id;
@@ -254,8 +255,9 @@ int recv_thread(int port, int package_size) {
     if(should_print_log && print_cnt++ % 1000 == 0) {
       std::cout << print_cnt << " timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
     }
-
+    // puts("100");
     if(send_to_core_net) {
+    // puts("101");
       cout << "发送到核心网，todo" << endl;
       sockaddr_in target_addr;
       target_addr.sin_family = AF_INET;
@@ -272,9 +274,10 @@ int recv_thread(int port, int package_size) {
       if(should_print_log) {
         print_head_msg(ptr);
       }
-      static int loss_rate = 0;
       static uint32_t cnt = 0;
+    // puts("102");
       if(cnt++ % 100 >= loss_rate) {
+        // cout << "send.....\n";
         sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
       }
     }

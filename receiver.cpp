@@ -6,6 +6,7 @@ using namespace std;
 using json = nlohmann::json;
 #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
 
+string send_to_address = "162.105.85.120";
 bool should_print_log = false;
 
 void print_log(string s) {
@@ -13,6 +14,27 @@ void print_log(string s) {
     return;
   }
   cout << s << endl;
+}
+
+json compress_packet_id_list(const json& packet_id_list_json) {
+  json pack;                  // 新list
+  uint32_t val = packet_id_list_json[0];
+  pack.push_back(val);
+  for (int i = 1; i<packet_id_list_json.size(); i++){
+      uint32_t val_new = packet_id_list_json[i];
+      if (val_new == val + 1){
+          //puts("lianxxu");
+      }
+      else {
+          pack.push_back(uint32_t(-1));    // 分隔符 -1
+          pack.push_back(uint32_t(val));
+          pack.push_back(uint32_t(val_new));
+      }
+      val = val_new;
+  }
+  pack.push_back(uint32_t(-1));           // 分隔符 -1
+  pack.push_back(uint32_t(val));
+  return pack;
 }
 
 string generateRandomString() {
@@ -70,6 +92,7 @@ public:
     }
     json j;
     srcFile >> j;
+    send_to_address = j["send_to_address"];
     pack.source_user_id = j["source_id"];
     // pack.source_module_id = j["source_module_id"];
     pack.dest_user_id = j["dest_id"];
@@ -327,8 +350,7 @@ public:
         }
       }
 
-
-      // cout << ptr->tunnel_id << "tunnel id" << endl;
+      cout << ptr->tunnel_id << " tunnel id" << endl;
       if(ptr->tunnel_id == 6) { // 网页
         if(ptr->source_module_id == 100) {
           // 客户端发送给服务器
@@ -339,7 +361,7 @@ public:
             if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
           }
           {
-            sockaddr_in duplex_target_addr = get_sockaddr_in("162.105.85.70", 52700);
+            sockaddr_in duplex_target_addr = get_sockaddr_in(send_to_address, 52700);
             error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
             if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
             cout << "52700 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
@@ -354,7 +376,7 @@ public:
             if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
           }
           {
-            sockaddr_in duplex_target_addr = get_sockaddr_in("162.105.85.70", 52701);
+            sockaddr_in duplex_target_addr = get_sockaddr_in(send_to_address, 52701);
             error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
             if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
             cout << "52701 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
@@ -399,7 +421,7 @@ public:
             cout << duplex_client_address << " " << duplex_client_port << endl;
             auto port = 52700 + (type % 10 - 1) % 3 + 1;
             cout << "video port" << port << endl;
-            sockaddr_in duplex_target_addr = get_sockaddr_in("162.105.85.70", port);
+            sockaddr_in duplex_target_addr = get_sockaddr_in(send_to_address, port);
             error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
             if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
           }
@@ -426,6 +448,10 @@ public:
           id_queue.pop();
       }
 
+      // compress packet id 
+      packet_id_list_json = compress_packet_id_list(packet_id_list_json);
+
+      // end
       json j2 = {
         {"packet_num", value.packet_num},
         {"byte_num", value.byte_num},
