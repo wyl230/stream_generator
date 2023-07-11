@@ -141,8 +141,10 @@ void write_to_head(my_package *ptr) {
   ptr->dest_user_id = pack.dest_user_id;
   ptr->flow_id = pack.flow_id;
   ptr->packet_id = global_packet_id++;
-  cout << "global_packet_id: " << global_packet_id << ptr->packet_id << endl;
-  cout << ptr->destination_ip << "ip | " << ptr->source_id << endl;
+  if(should_print_log) {
+    cout << "global_packet_id: " << global_packet_id << ptr->packet_id << endl;
+    cout << ptr->destination_ip << "ip | " << ptr->source_id << endl;
+  }
 
   std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
   if(should_print_log && print_cnt++ % 100 == 0) {
@@ -157,12 +159,14 @@ int recv_thread(int port, int package_size) {
   int recv_socket;
   sockaddr_in recv_addr, sender_addr;
 
+  int recv_port = -1;
   if(send_type == 3 || send_type == 6 || send_type == 5 || (send_type >= 11 && send_type <= 13)) {
-    auto port = (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port);
-    recv_socket = get_init_socket("0.0.0.0", port);
+    recv_port = (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port);
   } else if (send_type == 4) {
-    recv_socket = get_init_socket("0.0.0.0", video_in);
+    recv_port = video_in;
   }
+  recv_socket = get_init_socket("0.0.0.0", recv_port);
+  cout << "recv port: " << recv_port << endl;
 
   int my_socket = get_init_socket("0.0.0.0", -1);
   sockaddr_in target_addr = get_sockaddr_in(real_address(client_address).c_str(), client_port);
@@ -203,7 +207,6 @@ int recv_thread(int port, int package_size) {
       }
       case 3: {
         // 短消息
-        cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
         readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
         memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
         cout << "received: 短消息 " << readLen << endl;
@@ -218,21 +221,21 @@ int recv_thread(int port, int package_size) {
         break;
       }
       case 5: {
-        cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
-
         readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
 
         memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
         cout << "received: ip phone " << readLen << endl;
         break;
       }
-      case 6: {
-        cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
+      case 6: { // 网页浏览
+        if(should_print_log) 
+          cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
 
         readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-
         memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
-        cout << "received: 网页流 " << readLen << endl;
+
+        if(should_print_log) 
+          cout << "received: 网页流 " << readLen << endl;
         break;
       }
       default: {

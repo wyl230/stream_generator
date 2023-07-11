@@ -354,7 +354,7 @@ public:
           break;
         }
         case 6: { // 网页
-          receive_web(ptr->source_module_id == 100 ? true : false, my_socket, readLen);
+          receive_web(ptr->source_module_id == 100 ? true : false, my_socket, readLen, false);
           break;
         }
         case 11:
@@ -426,11 +426,11 @@ public:
     }
   }
 
-  void receive_web(bool from_client, const int& my_socket, const int& readLen) {
+  void receive_web(bool from_client, const int& my_socket, const int& readLen, const bool web_log) {
     if(from_client) {
-      short_send_to(my_socket, readLen, real_address("real-data-back"), 23101, "网页: from client. sendto: 23101");
+      short_send_to(my_socket, readLen, real_address("real-data-back"), 23101, "网页: from client. sendto: 23101", web_log);
     } else { // from server
-      short_send_to(my_socket, readLen, real_address("real-data-back"), 23201, "网页: from server. sendto: 23201");
+      short_send_to(my_socket, readLen, real_address("real-data-back"), 23201, "网页: from server. sendto: 23201", web_log);
     }
   }
 
@@ -462,9 +462,10 @@ public:
     }
   }
 
-  void short_send_to(const int& my_socket, const int& readLen, string target_address, int target_port, const string& msg) {
-    cout << msg << endl;
-    sockaddr_in duplex_target_addr = get_sockaddr_in("162.105.85.70", 52700);
+  void short_send_to(const int& my_socket, const int& readLen, string target_address, int target_port, const string& msg, bool print_msg = true) {
+    if(print_msg)
+      cout << msg << "| " << target_address << ":" << target_port << endl;
+    sockaddr_in duplex_target_addr = get_sockaddr_in(target_address, target_port);
     auto error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
     if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
   }
