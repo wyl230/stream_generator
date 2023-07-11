@@ -360,7 +360,6 @@ public:
         case 11:
         case 12:
         case 13: {
-          cout << "视频会议" << endl;
           receive_tencent_video(ptr->source_module_id == 100 ? true : false, my_socket, readLen, ptr->tunnel_id);
         }
         default: break;
@@ -444,11 +443,10 @@ public:
 
   void receive_tencent_video(bool from_client, const int& my_socket, const int& readLen, const int type, bool print_msg = false) {
     if(from_client) {
-      short_send_to(my_socket, readLen, "162.105.85.110", 52700, "腾讯会议: from client. sendto: 162.105.85.110:52700");
+      short_send_to(my_socket, readLen, "162.105.85.70", 52701, "腾讯会议: from client.");
     } else {
-      short_send_to(my_socket, readLen, "162.105.85.70", 52702, "腾讯会议: from server. sendto: 162.105.85.110:52702 others todo");
+      short_send_to(my_socket, readLen, "162.105.85.110", 52700, "腾讯会议: from server");
     }
-
   } 
 
   void receive_video_stream(const int& my_socket, const sockaddr_in& target_addr, const int& readLen, bool print_msg = false) {
