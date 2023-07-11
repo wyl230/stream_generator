@@ -1,0 +1,3 @@
+#!/bin/bash
+g++ sender-re.cpp -lpthread -o sender
+g++ receiver.cpp -lpthread -o receiver

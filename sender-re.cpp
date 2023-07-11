@@ -19,7 +19,6 @@ int package_size = 20480, package_speed, delay, report_interval;
 long package_num;
 int client_port, video_in;
 bool auto_send = false;
-bool send_to_core_net = false;
 int send_type = 0; // 1 恒比特 2 变比特 
 int control_port, server_port;// client:接入网 server：本pod接收程序 control；控制程序
 char datagram[20480];
@@ -60,10 +59,6 @@ int main(int argc, char *argv[]) {
   client_address = argv[1];
   global_packet_id = stoi(string(argv[2]));
   client_init();
-  /* global_packet_id = stoi(string(argv[2])); */
-  // std::ifstream ifs("packet_id.json");
-  // json jf = json::parse(ifs);
-  // global_packet_id = jf[to_string(pack.flow_id).c_str()];
 
   cout << "client address:" << client_address << endl;
   cout << server_port << endl;
@@ -110,10 +105,6 @@ void client_init() {
   auto_send = j["auto_send"];
   send_type = j["send_type"];
   srcFile.close();
-
-  if(pack.source_user_id == 33000 || pack.dest_user_id == 33000) {
-    send_to_core_net = true;
-  }
   return;
 }
 
@@ -139,6 +130,7 @@ sockaddr_in get_sockaddr_in(string address, int port) {
   target_addr.sin_addr.s_addr = inet_addr(address.c_str());
   return target_addr;
 }
+
 void write_to_head(my_package *ptr) {
   timespec now = {};  // 生成新的 timestamp
   clock_gettime(CLOCK_REALTIME, &now);
@@ -165,7 +157,7 @@ int recv_thread(int port, int package_size) {
   int recv_socket;
   sockaddr_in recv_addr, sender_addr;
 
-  if(send_type == 3 || send_type == 6 || (send_type >= 11 && send_type <= 13)) {
+  if(send_type == 3 || send_type == 6 || send_type == 5 || (send_type >= 11 && send_type <= 13)) {
     auto port = (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port);
     recv_socket = get_init_socket("0.0.0.0", port);
   } else if (send_type == 4) {
@@ -188,86 +180,82 @@ int recv_thread(int port, int package_size) {
   delay_c = {0, 0};
   data_generate(package_head);
   while (true) {    
-    // 音频：160Byte 20ms 模拟的是G.711 64kbps音频流 package_speed = 50
-    // 视频：1200Byte 3-6ms 模拟的是 H.264 1080p 30fps的视频流
-    if(send_type == 1) { // 恒比特流
-      readLen = 160;
-      memset(buffer, 1, 1230);
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000 / package_speed));
-    } else if(send_type == 2) { // 变比特流
-      std::random_device rd;  
-      std::mt19937 gen(rd()); 
-      std::uniform_int_distribution<> distrib(3, 6);
-      // std::uniform_int_distribution<> distrib(1000/package_speed / 2, 1000/package_speed * 3 / 2);
-      int delay_ms = distrib(gen);
-      readLen = 1200;
-      memset(buffer, 1, 1200);
-      std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
-    } else if(send_type == 4) {
-      // 视频流
-      readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-      strcpy(package_head + sizeof(my_package), buffer);
-    } else if(send_type == 3) {
-      // 短消息
-      cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
-      readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-      strcpy(package_head + sizeof(my_package), buffer);
-      cout << "received: 短消息 " << readLen << endl;
-    } else if(send_type == 6) { // 双向业务，接收转发来的client
-      cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
+    switch(send_type) {
+      using namespace std::chrono_literals;
+      case 1: {
+        // 音频：160Byte 20ms 模拟的是G.711 64kbps音频流 package_speed = 50
+        readLen = 160;
+        memset(buffer, 1, 1230);
+        std::this_thread::sleep_for((1000ms / package_speed));
+        break;
+      }
+      case 2: {
+        // 视频：1200Byte 3-6ms 模拟的是 H.264 1080p 30fps的视频流
+        std::random_device rd;  
+        std::mt19937 gen(rd()); 
+        std::uniform_int_distribution<> distrib(3, 6);
+        // std::uniform_int_distribution<> distrib(1000/package_speed / 2, 1000/package_speed * 3 / 2);
+        int delay_ms = distrib(gen);
+        readLen = 1200;
+        memset(buffer, 1, 1200);
+        std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+        break;
+      }
+      case 3: {
+        // 短消息
+        cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
+        readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+        memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
+        cout << "received: 短消息 " << readLen << endl;
+        break;
+      }
+      case 4: {
+        // 视频流
+        // cout << "send read len " << readLen << endl;
+        readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
 
-      readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+        memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
+        break;
+      }
+      case 5: {
+        cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
 
-      strcpy(package_head + sizeof(my_package), buffer);
-      cout << "received: 网页流 " << readLen << endl;
-    } else if(send_type == 10) {
-      return -1;
-    } else { // 接受真正的视频流
-      readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-      strcpy(package_head + sizeof(my_package), buffer);
+        readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+
+        memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
+        cout << "received: ip phone " << readLen << endl;
+        break;
+      }
+      case 6: {
+        cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
+
+        readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+
+        memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
+        cout << "received: 网页流 " << readLen << endl;
+        break;
+      }
+      default: {
+        readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+        memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
+        break;
+      }
     }
-    //转发视频流
 
     // package_head
     // 加上时间戳
-    my_package* ptr = reinterpret_cast<my_package*>(package_head);  // 将其强制转换为my_package指针类型
+    my_package* ptr = reinterpret_cast<my_package*>(package_head);  // 强制转换为my_package指针类型
 
     write_to_head(ptr);
 
-    if(send_to_core_net) {
-      cout << "发送到核心网，todo" << endl;
-      sockaddr_in target_addr;
-      target_addr.sin_family = AF_INET;
-      target_addr.sin_port = htons(32001);
-      target_addr.sin_addr.s_addr = inet_addr("11.0.8.1");
-
-      auto error = sendto(my_socket, package_head, readLen+sizeof
-      (my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
-      if (error == -1) {
-        perror("sendto");
-        cout <<"核心网发送失败！ sendto() error occurred at package "<< endl;
-      }
-    } else {
-      if(should_print_log) {
-        print_head_msg(ptr);
-      }
-      static uint32_t cnt = 0;
-      if(cnt++ % 100 >= loss_rate) {
-        sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
-      }
+    if(should_print_log) {
+      print_head_msg(ptr);
     }
-    // 写入packet_id到文件中 json格式 [id: packet_id]
-    // static int cnt = 0;
-    // if(cnt++ % 100 == 0) {
-    //   std::ifstream ifs("packet_id.json");
-    //   json jf = json::parse(ifs);
+    static uint32_t cnt = 0;
+    if(cnt++ % 100 >= loss_rate) {
+      sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+    }
 
-    //   jf[to_string(pack.flow_id).c_str()] = global_packet_id;
-    //   std::ofstream file("packet_id.json");
-    //   file << jf;
-    // }
-
-    //
     clock_gettime(CLOCK_MONOTONIC, &delay_a);
     if(delay_a.tv_sec-delay_c.tv_sec > 1) {
       static int cnt = 0;

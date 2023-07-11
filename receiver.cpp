@@ -78,7 +78,7 @@ public:
     struct hostent *host;
     host = gethostbyname(address.c_str());
     if (host == NULL) {
-      cout << "gethostbyname error" << endl;
+      cout << "gethostbyname error: " << address << endl;
       return "gethostbyname error";
     }
     return inet_ntoa(*(struct in_addr *)host->h_addr_list[0]);
@@ -325,10 +325,9 @@ public:
       // 固定化包间间隔
       memset(buffer, 0, sizeof(buffer));
       readLen = recvfrom(recv_socket, buffer, package_size+sizeof(my_package), 0, (sockaddr *)&sender_addr, &sender_addrLen);
+      // cout << "read len " << readLen << endl;
 
-      for(int i = 0;i < readLen - sizeof(my_package); i++) {
-        datagram[i] = buffer[i + sizeof(my_package)];
-      }
+      memmove(datagram, &buffer[sizeof(my_package)], readLen - sizeof(my_package));
 
       // 从buffer中读取时间戳
       my_package* ptr = reinterpret_cast<my_package*>(buffer); 
@@ -337,94 +336,37 @@ public:
       print_timestamp(ptr);
       update_flow_msg(ptr, readLen);
 
-      // strncpy(datagram, buffer + sizeof(my_package), readLen - sizeof(my_package));
-      // 发送给VLC 仅此端口为视频业务
-      if(ptr->flow_id == 23023) {
-        if(should_print_log) {
-          cout << "视频发送" << endl;
+      // cout << ptr->tunnel_id << " send type " << endl;
+      switch(ptr->tunnel_id) {
+        case 3: { // 短消息
+          cout << "短消息" << endl;
+          receive_web_short_msg(ptr->source_module_id == 100 ? true : false, my_socket, readLen);
+          break;
         }
-        error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
-        if (error == -1) {
-          perror("sendto");
-          cout <<"sendto() error occurred at package "<< endl;
+        case 4: { // 纯转发
+          // cout << "纯转发 | 视频流" << endl;
+          // cout << "readLen: " << readLen << endl;
+          receive_video_stream(my_socket, target_addr, readLen);
+          break;
         }
-      }
-
-      cout << ptr->tunnel_id << " tunnel id" << endl;
-      if(ptr->tunnel_id == 6) { // 网页
-        if(ptr->source_module_id == 100) {
-          // 客户端发送给服务器
-          cout << "网页:客户端发送给服务器" << endl;
-          {
-            sockaddr_in duplex_target_addr = get_sockaddr_in(real_address("real-data-back"), 23101);
-            error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
-            if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-          }
-          {
-            sockaddr_in duplex_target_addr = get_sockaddr_in(send_to_address, 52700);
-            error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
-            if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-            cout << "52700 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
-          }
-        } else if(ptr->source_module_id == 200) {
-          // 服务器发送给客户端
-          cout << "网页：服务器发送给客户端" << endl;
-          cout << duplex_client_address << " " << 23201 << endl;
-          {
-            sockaddr_in duplex_target_addr = get_sockaddr_in(real_address("real-data-back"), 23201);
-            error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
-            if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-          }
-          {
-            sockaddr_in duplex_target_addr = get_sockaddr_in(send_to_address, 52701);
-            error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
-            if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-            cout << "52701 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
-          }
+        case 5: { // ip电话
+          receive_ip_phone(ptr->source_module_id == 100 ? true : false, my_socket, readLen);
+          break;
         }
-      } else if(ptr->tunnel_id == 3) { // 短消息
-        cout << "短消息" << endl;
-        // cout << (ptr->source_module_id) << " " << endl;
-        // 不需要抓包
-        if(ptr->source_module_id == 100) {
-          // 客户端发送给服务器
-          cout << "短消息：客户端发送给服务器" << endl;
-          {
-            sockaddr_in duplex_target_addr = get_sockaddr_in("127.0.0.1", 23100);
-            error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
-            if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-          }
-
-        } else if(ptr->source_module_id == 200) {
-          // 服务器发送给客户端
-          cout << "短消息: 服务器发送给客户端" << endl;
-          cout << duplex_client_address << " " << duplex_client_port << endl;
-          {
-            sockaddr_in duplex_target_addr = get_sockaddr_in("127.0.0.1", 23200);
-            error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
-            if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-          }
+        case 6: { // 网页
+          receive_web(ptr->source_module_id == 100 ? true : false, my_socket, readLen);
+          break;
         }
-      } else if(ptr->tunnel_id >= 11 && ptr->tunnel_id <= 13) {
-          int type = ptr->tunnel_id;
+        case 11:
+        case 12:
+        case 13: {
           cout << "视频会议" << endl;
-          cout << ptr->source_module_id << "module id" << endl;
-          if(ptr->source_module_id == 100) {
-            // 客户端发送给服务器
-            cout << "视频会议：客户端发送给服务器" << endl;
-            sockaddr_in duplex_target_addr = get_sockaddr_in("162.105.85.110", 52700);
-            error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
-            if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-          } else if(ptr->source_module_id == 200) {
-            // 服务器发送给客户端
-            cout << "视频会议: 服务器发送给客户端" << endl;
-            cout << duplex_client_address << " " << duplex_client_port << endl;
-            auto port = 52700 + (type % 10 - 1) % 3 + 1;
-            cout << "video port" << port << endl;
-            sockaddr_in duplex_target_addr = get_sockaddr_in(send_to_address, port);
-            error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
-            if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
-          }
+          receive_tencent_video(ptr->source_module_id == 100 ? true : false, my_socket, readLen, ptr->tunnel_id);
+        }
+        default: break;
+      }
+      
+      if(ptr->tunnel_id >= 11 && ptr->tunnel_id <= 13) {
         }
     }
     return 0;
@@ -474,6 +416,57 @@ public:
     auto my_socket = get_init_socket("0.0.0.0", 2222);
     auto target_addr = get_sockaddr_in(control_address, control_port);
     sendto(my_socket, message.c_str(), message.length(), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+  }
+
+  void receive_ip_phone(bool from_client, const int& my_socket, const int& readLen) {
+    if(from_client) { // from client
+      short_send_to(my_socket, readLen, "162.105.85.70", 52700, "ip phone: from client. sendto: 52700");
+    } else { // from server
+      short_send_to(my_socket, readLen, "162.105.85.70", 52701, "ip phone：from server. sendto: 52701");
+    }
+  }
+
+  void receive_web(bool from_client, const int& my_socket, const int& readLen) {
+    if(from_client) {
+      short_send_to(my_socket, readLen, real_address("real-data-back"), 23101, "网页: from client. sendto: 23101");
+    } else { // from server
+      short_send_to(my_socket, readLen, real_address("real-data-back"), 23201, "网页: from server. sendto: 23201");
+    }
+  }
+
+  void receive_web_short_msg(bool from_client, const int& my_socket, const int& readLen) {
+    if(from_client) {
+      short_send_to(my_socket, readLen, "127.0.0.1", 23100, "短消息: sendto: 127.0.0.1:23100");
+    } else {
+      short_send_to(my_socket, readLen, "127.0.0.1", 23200, "短消息: sendto: 127.0.0.1:23200");
+    }
+  }
+
+  void receive_tencent_video(bool from_client, const int& my_socket, const int& readLen, const int type, bool print_msg = false) {
+    if(from_client) {
+      short_send_to(my_socket, readLen, "162.105.85.110", 52700, "腾讯会议: from client. sendto: 162.105.85.110:52700");
+    } else {
+      short_send_to(my_socket, readLen, "162.105.85.70", 52702, "腾讯会议: from server. sendto: 162.105.85.110:52702 others todo");
+    }
+
+  } 
+
+  void receive_video_stream(const int& my_socket, const sockaddr_in& target_addr, const int& readLen, bool print_msg = false) {
+    if(should_print_log) {
+      cout << "视频发送" << endl;
+    }
+    auto error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+    if (error == -1) {
+      perror("sendto");
+      cout <<"sendto() error occurred at package "<< endl;
+    }
+  }
+
+  void short_send_to(const int& my_socket, const int& readLen, string target_address, int target_port, const string& msg) {
+    cout << msg << endl;
+    sockaddr_in duplex_target_addr = get_sockaddr_in("162.105.85.70", 52700);
+    auto error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
+    if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
   }
 
 };
