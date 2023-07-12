@@ -72,7 +72,7 @@ public:
   string duplex_server_address, duplex_client_address;
   int duplex_server_port, duplex_client_port;
 
-  map<int, msg_for_each_stream> flow_msg;
+  unordered_map<int, msg_for_each_stream> flow_msg;
 
   string real_address(string address) {
     struct hostent *host;
@@ -435,9 +435,9 @@ public:
 
   void receive_web_short_msg(bool from_client, const int& my_socket, const int& readLen) {
     if(from_client) {
-      short_send_to(my_socket, readLen, "127.0.0.1", 23100, "短消息: sendto: 127.0.0.1:23100");
+      short_send_to(my_socket, readLen, "162.105.85.70", 23100, "短消息");
     } else {
-      short_send_to(my_socket, readLen, "127.0.0.1", 23200, "短消息: sendto: 127.0.0.1:23200");
+      short_send_to(my_socket, readLen, "162.105.85.70", 23200, "短消息");
     }
   }
 

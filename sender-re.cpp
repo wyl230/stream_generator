@@ -208,7 +208,7 @@ public:
           // 短消息
           readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
           memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
-          cout << "received: 短消息 " << readLen << endl;
+          cout << "received: 短消息 " << buffer << " " << readLen << endl;
           break;
         }
         case 4: {
