@@ -14,7 +14,7 @@
   "report_interval": 1,
   "auto_send": true,
   "flow_id": 2,
-  "send_type": 11,
+  "send_type": 6,
   "duplex_client_address": "real-data-back",
   "duplex_server_address": "real-data-back",
   "duplex_client_port": 23100,

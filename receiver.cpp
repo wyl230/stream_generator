@@ -16,7 +16,8 @@ void print_log(string s) {
   cout << s << endl;
 }
 
-json compress_packet_id_list(const json& packet_id_list_json) {
+json compress_packet_id_list(json& packet_id_list_json) {
+  sort(packet_id_list_json.begin(), packet_id_list_json.end());
   json pack;                  // 新list
   uint32_t val = packet_id_list_json[0];
   pack.push_back(val);
@@ -290,7 +291,7 @@ public:
       last_time = get_current_time();
       // 报告，超过一定时间了，除去最大id和包总数，全部初始化(所有id都要初始化)
       // 并设置时间
-      report_delay(); 
+      report_flow_message(); 
       cout << "msg reinit" << endl;
       // for(auto it = flow_msg.begin(); it != flow_msg.end(); ++it) {
       //   int key = it->first;
@@ -354,7 +355,7 @@ public:
           break;
         }
         case 6: { // 网页
-          receive_web(ptr->source_module_id == 100 ? true : false, my_socket, readLen, false);
+          receive_web(ptr->source_module_id == 100 ? true : false, my_socket, readLen, true);
           break;
         }
         case 11:
@@ -371,7 +372,7 @@ public:
     return 0;
   }
 
-  void report_delay() {
+  void report_flow_message() {
     json j;
     for(auto it = flow_msg.begin(); it != flow_msg.end(); ++it) {
       int key = it->first;

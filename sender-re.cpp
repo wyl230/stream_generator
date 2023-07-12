@@ -1,7 +1,9 @@
 // sender中打上时间戳
 // tunnel_id 用来当作send_type
 
+#define LOGURU_WITH_STREAMS 1
 #include "header.h"
+#include "loguru.hpp"
 #include "json.hpp"
 using namespace std;
 using json = nlohmann::json;
@@ -55,6 +57,7 @@ public:
   }
 
   void start(string argv1, string argv2) {
+    LOG_S(INFO) << "emm" << endl;
     client_address = argv1;
     global_packet_id = stoi(string(argv2));
     client_init();
