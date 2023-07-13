@@ -124,6 +124,11 @@ public:
     return;
   }
 
+  int set_bufsize(int recv_size, int send_size, int sock_) {
+      if (setsockopt(sock_, SOL_SOCKET, SO_RCVBUF, (char*)&recv_size, sizeof(int)) == -1) return -1;
+      return setsockopt(sock_, SOL_SOCKET, SO_RCVBUF, (char*)&send_size, sizeof(int));
+  }
+
   void start() {
     param_config();
     cout << "server port" << server_port << endl;
@@ -287,7 +292,7 @@ public:
       cout << "time diff ai" << get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) << endl;
       print_msg(ptr);
     }
-    if(flow_msg.count(ptr->flow_id) && get_time_diff(last_time, get_current_time()) > 1e9) {
+    if(flow_msg.count(ptr->flow_id) && get_time_diff(last_time, get_current_time()) > 2e9) {
       last_time = get_current_time();
       // 报告，超过一定时间了，除去最大id和包总数，全部初始化(所有id都要初始化)
       // 并设置时间
@@ -315,6 +320,7 @@ public:
     auto recv_addr = get_sockaddr_in("0.0.0.0", server_port);
     bind(recv_socket, (sockaddr *)&recv_addr, sizeof(recv_addr));
 
+    set_bufsize(10 * 1024 * 1024, 10*1024*1024, recv_socket);
     // 接收准备
     sockaddr_in sender_addr;
     socklen_t sender_addrLen = sizeof(sender_addr);
@@ -355,19 +361,20 @@ public:
           break;
         }
         case 6: { // 网页
-          receive_web(ptr->source_module_id == 100 ? true : false, my_socket, readLen, true);
+          receive_web(ptr->source_module_id == 100 ? true : false, my_socket, readLen, false);
           break;
         }
-        case 11:
-        case 12:
+        case 11: {
+          receive_tencent_video(ptr->source_module_id == 100 ? true : false, my_socket, readLen, ptr->tunnel_id);
+        } break;
+        case 12: {
+          receive_tencent_video(ptr->source_module_id == 100 ? true : false, my_socket, readLen, ptr->tunnel_id);
+        } break;
         case 13: {
           receive_tencent_video(ptr->source_module_id == 100 ? true : false, my_socket, readLen, ptr->tunnel_id);
-        }
+        } break;
         default: break;
       }
-      
-      if(ptr->tunnel_id >= 11 && ptr->tunnel_id <= 13) {
-        }
     }
     return 0;
   }
@@ -443,10 +450,23 @@ public:
   }
 
   void receive_tencent_video(bool from_client, const int& my_socket, const int& readLen, const int type, bool print_msg = false) {
-    if(from_client) {
-      short_send_to(my_socket, readLen, "162.105.85.70", 52701, "腾讯会议: from client.");
-    } else {
-      short_send_to(my_socket, readLen, "162.105.85.110", 52700, "腾讯会议: from server");
+    switch(type) {
+      case 11: {
+        if(from_client) {
+          short_send_to(my_socket, readLen, "162.105.85.70", 52701, "腾讯会议: from client.");
+        } else {
+          short_send_to(my_socket, readLen, "162.105.85.110", 52700, "腾讯会议: from server");
+        }
+        break;
+      }
+      case 12: {
+        if(from_client) {
+          short_send_to(my_socket, readLen, "162.105.85.188", 52700, "腾讯会议: from client.");
+        } else {
+          short_send_to(my_socket, readLen, "162.105.85.58", 52700, "腾讯会议: from server");
+        }
+        break;
+      }
     }
   } 
 

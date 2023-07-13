@@ -13,7 +13,7 @@
   "video_out": 3000,
   "report_interval": 1,
   "auto_send": true,
-  "flow_id": 2,
+  "flow_id": 232323,
   "send_type": 6,
   "duplex_client_address": "real-data-back",
   "duplex_server_address": "real-data-back",
@@ -21,5 +21,5 @@
   "duplex_server_port": 23200,
   "should_print_log": false,
   "send_to_address": "162.105.85.120",
-  "loss_rate": 4
+  "loss_rate": 0
 }

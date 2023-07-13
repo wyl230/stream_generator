@@ -1,8 +1,9 @@
 // sender中打上时间戳
 // tunnel_id 用来当作send_type
 
-#define LOGURU_WITH_STREAMS 1
+// #define LOGURU_WITH_STREAMS 1
 #include "header.h"
+#include <format>
 #include "loguru.hpp"
 #include "json.hpp"
 using namespace std;
@@ -57,7 +58,7 @@ public:
   }
 
   void start(string argv1, string argv2) {
-    LOG_S(INFO) << "emm" << endl;
+    LOG_F(INFO, std::format("234"));
     client_address = argv1;
     global_packet_id = stoi(string(argv2));
     client_init();
@@ -187,12 +188,11 @@ public:
     data_generate(package_head);
     while (true) {    
       switch(send_type) {
-        using namespace std::chrono_literals;
         case 1: {
           // 音频：160Byte 20ms 模拟的是G.711 64kbps音频流 package_speed = 50
           readLen = 160;
           memset(buffer, 1, 1230);
-          std::this_thread::sleep_for((1000ms / package_speed));
+          std::this_thread::sleep_for(std::chrono::milliseconds(1000 / package_speed));
           break;
         }
         case 2: {
