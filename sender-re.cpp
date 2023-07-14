@@ -3,7 +3,8 @@
 
 // #define LOGURU_WITH_STREAMS 1
 #include "header.h"
-#include <format>
+#define FMT_HEADER_ONLY 
+// #include "fmt/core.h"
 #include "loguru.hpp"
 #include "json.hpp"
 using namespace std;
@@ -14,10 +15,11 @@ public:
   bool should_print_log = true;
   int print_cnt = 0;
   int loss_rate = 0;
+  int cbr_package_size = 160;
 
   uint32_t global_packet_id = 0;
 
-  int package_size = 20480, package_speed, delay, report_interval;
+  int package_size = 20480, pps, delay, report_interval;
   long package_num;
   int client_port, video_in;
   bool auto_send = false;
@@ -58,7 +60,7 @@ public:
   }
 
   void start(string argv1, string argv2) {
-    LOG_F(INFO, std::format("234"));
+    // LOG_F(INFO, std::format("234"));
     client_address = argv1;
     global_packet_id = stoi(string(argv2));
     client_init();
@@ -86,6 +88,7 @@ public:
     json j;
     srcFile >> j;
     loss_rate = j["loss_rate"];
+    cbr_package_size = j["cbr_package_size"];
     should_print_log = j["should_print_log"];
     pack.source_user_id = j["source_id"];
     pack.source_module_id = j["source_module_id"];
@@ -95,7 +98,7 @@ public:
     pack.destination_ip = str_to_ip(string("192.168.") + to_string(pack.dest_user_id) + string(".1"));
     pack.flow_id = j["flow_id"];
     package_num = j["package_num"];
-    package_speed = j["package_speed"];
+    pps = j["pps"];
     control_port = j["control_port"];
     server_port = j["server_port"];
     client_port = j["client_port"];
@@ -189,10 +192,10 @@ public:
     while (true) {    
       switch(send_type) {
         case 1: {
-          // 音频：160Byte 20ms 模拟的是G.711 64kbps音频流 package_speed = 50
-          readLen = 160;
+          // 音频：160Byte 20ms 模拟的是G.711 64kbps音频流 pps = 50
+          readLen = cbr_package_size;
           memset(buffer, 1, 1230);
-          std::this_thread::sleep_for(std::chrono::milliseconds(1000 / package_speed));
+          std::this_thread::sleep_for(std::chrono::milliseconds(1000 / pps));
           break;
         }
         case 2: {
@@ -200,7 +203,7 @@ public:
           std::random_device rd;  
           std::mt19937 gen(rd()); 
           std::uniform_int_distribution<> distrib(3, 6);
-          // std::uniform_int_distribution<> distrib(1000/package_speed / 2, 1000/package_speed * 3 / 2);
+          // std::uniform_int_distribution<> distrib(1000/pps / 2, 1000/pps * 3 / 2);
           int delay_ms = distrib(gen);
           readLen = 1200;
           memset(buffer, 1, 1200);
@@ -218,13 +221,11 @@ public:
           // 视频流
           // cout << "send read len " << readLen << endl;
           readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-
           memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
           break;
         }
         case 5: {
           readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-
           memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
           cout << "received: ip phone " << readLen << endl;
           break;

@@ -21,7 +21,7 @@ json compress_packet_id_list(json& packet_id_list_json) {
   json pack;                  // 新list
   uint32_t val = packet_id_list_json[0];
   pack.push_back(val);
-  for (int i = 1; i<packet_id_list_json.size(); i++){
+  for (int i = 1; i < packet_id_list_json.size(); i++){
       uint32_t val_new = packet_id_list_json[i];
       if (val_new == val + 1){
           //puts("lianxxu");
@@ -292,7 +292,7 @@ public:
       cout << "time diff ai" << get_time_diff(flow_msg[ptr->flow_id].last_min_max_delay_record, now) << endl;
       print_msg(ptr);
     }
-    if(flow_msg.count(ptr->flow_id) && get_time_diff(last_time, get_current_time()) > 2e9) {
+    if(flow_msg.count(ptr->flow_id) && get_time_diff(last_time, get_current_time()) > 19e8) {
       last_time = get_current_time();
       // 报告，超过一定时间了，除去最大id和包总数，全部初始化(所有id都要初始化)
       // 并设置时间
@@ -344,10 +344,11 @@ public:
       update_flow_msg(ptr, readLen);
 
       // cout << ptr->tunnel_id << " send type " << endl;
+      bool from_client = ptr->source_module_id == 100 ? true : false;
       switch(ptr->tunnel_id) {
         case 3: { // 短消息
           cout << "短消息" << endl;
-          receive_web_short_msg(ptr->source_module_id == 100 ? true : false, my_socket, readLen);
+          receive_web_short_msg(from_client, my_socket, readLen);
           break;
         }
         case 4: { // 纯转发
@@ -357,21 +358,21 @@ public:
           break;
         }
         case 5: { // ip电话
-          receive_ip_phone(ptr->source_module_id == 100 ? true : false, my_socket, readLen);
+          receive_ip_phone(from_client, my_socket, readLen);
           break;
         }
         case 6: { // 网页
-          receive_web(ptr->source_module_id == 100 ? true : false, my_socket, readLen, false);
+          receive_web(from_client, my_socket, readLen, false);
           break;
         }
         case 11: {
-          receive_tencent_video(ptr->source_module_id == 100 ? true : false, my_socket, readLen, ptr->tunnel_id);
+          receive_tencent_video(from_client, my_socket, readLen, ptr->tunnel_id);
         } break;
         case 12: {
-          receive_tencent_video(ptr->source_module_id == 100 ? true : false, my_socket, readLen, ptr->tunnel_id);
+          receive_tencent_video(from_client, my_socket, readLen, ptr->tunnel_id);
         } break;
         case 13: {
-          receive_tencent_video(ptr->source_module_id == 100 ? true : false, my_socket, readLen, ptr->tunnel_id);
+          receive_tencent_video(from_client, my_socket, readLen, ptr->tunnel_id);
         } break;
         default: break;
       }
@@ -427,17 +428,17 @@ public:
 
   void receive_ip_phone(bool from_client, const int& my_socket, const int& readLen) {
     if(from_client) { // from client
-      short_send_to(my_socket, readLen, "162.105.85.70", 52700, "ip phone: from client. sendto: 52700");
+      short_send_to(my_socket, readLen, "162.105.85.70", 52600, "ip phone: from client");
     } else { // from server
-      short_send_to(my_socket, readLen, "162.105.85.70", 52701, "ip phone：from server. sendto: 52701");
+      short_send_to(my_socket, readLen, "162.105.85.70", 52601, "ip phone：from server.");
     }
   }
 
   void receive_web(bool from_client, const int& my_socket, const int& readLen, const bool web_log) {
     if(from_client) {
-      short_send_to(my_socket, readLen, real_address("real-data-back"), 23101, "网页: from client. sendto: 23101", web_log);
+      short_send_to(my_socket, readLen, real_address("real-data-back"), 23101, "网页: from client. ", web_log);
     } else { // from server
-      short_send_to(my_socket, readLen, real_address("real-data-back"), 23201, "网页: from server. sendto: 23201", web_log);
+      short_send_to(my_socket, readLen, real_address("real-data-back"), 23201, "网页: from server. ", web_log);
     }
   }
 
