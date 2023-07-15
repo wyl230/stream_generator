@@ -95,7 +95,11 @@ public:
     pack.tunnel_id = j["send_type"];
     pack.dest_user_id = j["dest_id"];
     pack.source_id = pack.source_user_id;
-    pack.destination_ip = str_to_ip(string("192.168.") + to_string(pack.dest_user_id) + string(".1"));
+    if(pack.dest_user_id >= 2000) {
+      pack.destination_ip = str_to_ip(string("193.168.") + to_string(pack.dest_user_id - 2000) + string(".1"));
+    } else {
+      pack.destination_ip = str_to_ip(string("192.168.") + to_string(pack.dest_user_id) + string(".1"));
+    }
     pack.flow_id = j["flow_id"];
     package_num = j["package_num"];
     pps = j["pps"];

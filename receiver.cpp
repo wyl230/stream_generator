@@ -19,23 +19,45 @@ void print_log(string s) {
 json compress_packet_id_list(json& packet_id_list_json) {
   sort(packet_id_list_json.begin(), packet_id_list_json.end());
   json pack;                  // 新list
-  uint32_t val = packet_id_list_json[0];
-  pack.push_back(val);
-  for (int i = 1; i < packet_id_list_json.size(); i++){
-      uint32_t val_new = packet_id_list_json[i];
-      if (val_new == val + 1){
-          //puts("lianxxu");
+  auto from = -1;
+  auto to = -1;
+  cout << packet_id_list_json.dump() << endl;
+
+  for(auto& packet_id: packet_id_list_json) {
+    if(from == -1) {
+      from = packet_id;
+      pack.push_back(from);
+      pack.push_back(-1);
+    } else {
+      if(packet_id == from + 1) {
+        to = packet_id;
+      } else if(packet_id == to + 1) {
+        to = packet_id;
+      } else {
+        pack.push_back(to);
+        from = packet_id;
+        pack.push_back(from);
+        pack.push_back(-1);
       }
-      else {
-          pack.push_back(uint32_t(-1));    // 分隔符 -1
-          pack.push_back(uint32_t(val));
-          pack.push_back(uint32_t(val_new));
-      }
-      val = val_new;
+    }
   }
-  pack.push_back(uint32_t(-1));           // 分隔符 -1
-  pack.push_back(uint32_t(val));
+  pack.push_back(packet_id_list_json[packet_id_list_json.size() - 1]);
   return pack;
+  // for (int i = 1; i < packet_id_list_json.size(); i++){
+  //     uint32_t val_new = packet_id_list_json[i];
+  //     if (val_new == val + 1){
+  //         //puts("lianxxu");
+  //     }
+  //     else {
+  //         pack.push_back(uint32_t(-1));    // 分隔符 -1
+  //         pack.push_back(uint32_t(val));
+  //         pack.push_back(uint32_t(val_new));
+  //     }
+  //     val = val_new;
+  // }
+  // pack.push_back(uint32_t(-1));           // 分隔符 -1
+  // pack.push_back(uint32_t(val));
+  // return pack;
 }
 
 string generateRandomString() {
@@ -98,7 +120,7 @@ public:
     // pack.source_module_id = j["source_module_id"];
     pack.dest_user_id = j["dest_id"];
     package_num = j["package_num"];
-    package_speed = j["package_speed"];
+    // package_speed = j["package_speed"];
     control_port = j["control_port"];
     server_port = j["server_port"];
     report_interval = j["report_interval"];
