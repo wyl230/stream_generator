@@ -4,7 +4,7 @@
 // #define LOGURU_WITH_STREAMS 1
 #include "header.h"
 #define FMT_HEADER_ONLY 
-// #include "fmt/core.h"
+#include "fmt/core.h"
 #include "loguru.hpp"
 #include "json.hpp"
 using namespace std;
@@ -60,7 +60,10 @@ public:
   }
 
   void start(string argv1, string argv2) {
-    // LOG_F(INFO, std::format("234"));
+    /* LOG_F(DEBUG, fmt::format("234{}", 234).c_str()); */
+    LOG_F(INFO, fmt::format("234{}", 234).c_str());
+    LOG_F(1, fmt::format("234{}", 234).c_str());
+    LOG_F(2, fmt::format("234{}", 234).c_str());
     client_address = argv1;
     global_packet_id = stoi(string(argv2));
     client_init();

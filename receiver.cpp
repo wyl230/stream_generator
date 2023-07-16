@@ -8,23 +8,27 @@ using json = nlohmann::json;
 
 string send_to_address = "162.105.85.120";
 bool should_print_log = false;
+void print_log(string s) { if(!should_print_log) { return; } cout << s << endl; }
 
-void print_log(string s) {
-  if(!should_print_log) {
-    return;
-  }
-  cout << s << endl;
+void merge_sort(json& nums, int l, int r) {
+	if(l < r) {
+		int mid = (l + r) / 2;
+		merge_sort(nums, l, mid);
+		merge_sort(nums, mid+1, r);
+		inplace_merge(nums.begin() + l, nums.begin()+ mid + 1, nums.begin() + r + 1);	
+	}
 }
 
 json compress_packet_id_list(json& packet_id_list_json) {
-  sort(packet_id_list_json.begin(), packet_id_list_json.end());
+  merge_sort(packet_id_list_json, 0, packet_id_list_json.size() - 1);
+  // sort(packet_id_list_json.begin(), packet_id_list_json.end());
   json pack;                  // 新list
-  auto from = -1;
-  auto to = -1;
+  auto from = 0;
+  auto to = 0;
   cout << packet_id_list_json.dump() << endl;
 
   for(auto& packet_id: packet_id_list_json) {
-    if(from == -1) {
+    if(from == 0) {
       from = packet_id;
       pack.push_back(from);
       pack.push_back(-1);
