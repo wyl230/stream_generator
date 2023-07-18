@@ -3,9 +3,9 @@
 
 // #define LOGURU_WITH_STREAMS 1
 #include "header.h"
-#define FMT_HEADER_ONLY 
-#include "fmt/core.h"
-#include "loguru.hpp"
+// #define FMT_HEADER_ONLY 
+// #include "fmt/core.h"
+// #include "loguru.hpp"
 #include "json.hpp"
 using namespace std;
 using json = nlohmann::json;
@@ -34,6 +34,7 @@ public:
   int duplex_server_port, duplex_client_port;
 
   void print_head_msg(my_package* ptr) {
+    if(!should_print_log) return;
     cout << "head: ";
     cout << ptr->source_id << " "; 
     cout << ptr->destination_ip << " "; 
@@ -61,9 +62,9 @@ public:
 
   void start(string argv1, string argv2) {
     /* LOG_F(DEBUG, fmt::format("234{}", 234).c_str()); */
-    LOG_F(INFO, fmt::format("234{}", 234).c_str());
-    LOG_F(1, fmt::format("234{}", 234).c_str());
-    LOG_F(2, fmt::format("234{}", 234).c_str());
+    // LOG_F(INFO, fmt::format("234{}", 234).c_str());
+    // LOG_F(1, fmt::format("234{}", 234).c_str());
+    // LOG_F(2, fmt::format("234{}", 234).c_str());
     client_address = argv1;
     global_packet_id = stoi(string(argv2));
     client_init();
@@ -165,121 +166,24 @@ public:
     }
   }
 
-
   int recv_thread(int port, int package_size) {
-    int num = 0;
-    // socket初始化
-    int recv_socket;
-    sockaddr_in recv_addr, sender_addr;
-
-    int recv_port = -1;
-    if(send_type == 3 || send_type == 6 || send_type == 5 || (send_type >= 11 && send_type <= 13)) {
-      recv_port = (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port);
-    } else if (send_type == 4) {
-      recv_port = video_in;
-    }
-    recv_socket = get_init_socket("0.0.0.0", recv_port);
-    cout << "recv port: " << recv_port << endl;
-
-    int my_socket = get_init_socket("0.0.0.0", -1);
-    sockaddr_in target_addr = get_sockaddr_in(real_address(client_address).c_str(), client_port);
-
-    // 接收准备
-    socklen_t sender_addrLen = sizeof(sender_addr);
+    int recv_socket = get_recv_socket_by_send_type(send_type);
     char buffer[package_size];
-    char package_head[package_size+sizeof(my_package)];
+    char package_head[package_size + sizeof(my_package)];
     int readLen = 0;
-    uint32_t cnt_package = 0,recent_package=0;
-    uint32_t total_delay;
-    timespec delay_a, delay_c;
-    uint32_t max_delay=0,min_delay=INT_MAX,avg_delay=0, recent_delay=0,avg_speed=0;
-    delay_a = {0, 0};
-    delay_c = {0, 0};
+
     data_generate(package_head);
+
     while (true) {    
-      switch(send_type) {
-        case 1: {
-          // 音频：160Byte 20ms 模拟的是G.711 64kbps音频流 pps = 50
-          readLen = cbr_package_size;
-          memset(buffer, 1, 1230);
-          std::this_thread::sleep_for(std::chrono::milliseconds(1000 / pps));
-          break;
-        }
-        case 2: {
-          // 视频：1200Byte 3-6ms 模拟的是 H.264 1080p 30fps的视频流
-          std::random_device rd;  
-          std::mt19937 gen(rd()); 
-          std::uniform_int_distribution<> distrib(3, 6);
-          // std::uniform_int_distribution<> distrib(1000/pps / 2, 1000/pps * 3 / 2);
-          int delay_ms = distrib(gen);
-          readLen = 1200;
-          memset(buffer, 1, 1200);
-          std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
-          break;
-        }
-        case 3: {
-          // 短消息
-          readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-          memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
-          cout << "received: 短消息 " << buffer << " " << readLen << endl;
-          break;
-        }
-        case 4: {
-          // 视频流
-          // cout << "send read len " << readLen << endl;
-          readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-          memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
-          break;
-        }
-        case 5: {
-          readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-          memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
-          cout << "received: ip phone " << readLen << endl;
-          break;
-        }
-        case 6: { // 网页浏览
-          if(should_print_log) 
-            cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
-
-          readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-          memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
-
-          if(should_print_log) 
-            cout << "received: 网页流 " << readLen << endl;
-          break;
-        }
-        default: {
-          readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
-          memmove(&(package_head[sizeof(my_package)]), buffer, sizeof(buffer));
-          break;
-        }
-      }
-
-      // package_head
-      // 加上时间戳
+      handle_different_type_flow(send_type, readLen, buffer, package_head, recv_socket, sizeof(buffer), sizeof(package_head));
       my_package* ptr = reinterpret_cast<my_package*>(package_head);  // 强制转换为my_package指针类型
-
       write_to_head(ptr);
-
-      if(should_print_log) {
-        print_head_msg(ptr);
-      }
-      static uint32_t cnt = 0;
-      if(cnt++ % 100 >= loss_rate) {
-        sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
-      }
-
-      clock_gettime(CLOCK_MONOTONIC, &delay_a);
-      if(delay_a.tv_sec-delay_c.tv_sec > 1) {
-        static int cnt = 0;
-        cout<< "sending " << cnt++ << endl;
-        delay_c = delay_a;
-      }
+      print_head_msg(ptr);
+      send_packet(package_head, readLen);
     }
   }
 
-  void data_generate(char *package_head)
-  {
+  void data_generate(char *package_head) {
     my_package *temp=(my_package *)package_head;
     temp->source_id = pack.source_id;
     temp->destination_ip = pack.destination_ip;
@@ -288,6 +192,103 @@ public:
     temp->source_module_id = pack.source_module_id;
     temp->tunnel_id = pack.tunnel_id;
     return;
+  }
+
+  void show_current_state(int total_packet_num) {
+    static timespec delay_a = {0, 0}, delay_c = {0, 0};
+
+    clock_gettime(CLOCK_MONOTONIC, &delay_a);
+    if(delay_a.tv_sec-delay_c.tv_sec > 1) {
+      static int cnt = 0;
+      cout<< "sending " << total_packet_num << endl;
+      delay_c = delay_a;
+    }
+  }
+
+  int get_recv_socket_by_send_type(int send_type) {
+    int recv_port = -1;
+    if(send_type == 3 || send_type == 6 || send_type == 5 || (send_type >= 11 && send_type <= 13)) {
+      recv_port = (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port);
+    } else if (send_type == 4) {
+      recv_port = video_in;
+    }
+    cout << "recv port: " << recv_port << endl;
+    return get_init_socket("0.0.0.0", recv_port);
+  }
+
+  void handle_different_type_flow(int send_type, int& readLen, char buffer[], char package_head[], int &recv_socket, int buffer_length, int package_head_length) {
+    sockaddr_in sender_addr;
+    socklen_t sender_addrLen = sizeof(sender_addr);
+    switch(send_type) {
+      case 1: {
+        // 音频：160Byte 20ms 模拟的是G.711 64kbps音频流 pps = 50
+        readLen = cbr_package_size;
+        memset(buffer, 1, 1230);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000 / pps));
+        break;
+      }
+      case 2: {
+        // 视频：1200Byte 3-6ms 模拟的是 H.264 1080p 30fps的视频流
+        std::random_device rd;  
+        std::mt19937 gen(rd()); 
+        std::uniform_int_distribution<> distrib(3, 6);
+        // std::uniform_int_distribution<> distrib(1000/pps / 2, 1000/pps * 3 / 2);
+        int delay_ms = distrib(gen);
+        readLen = 1200;
+        memset(buffer, 1, 1200);
+        std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+        break;
+      }
+      case 3: {
+        // 短消息
+        readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+        memmove(&(package_head[sizeof(my_package)]), buffer, buffer_length);
+        cout << "received: 短消息 " << buffer << " " << readLen << endl;
+        break;
+      }
+      case 4: {
+        // 视频流
+        // cout << "send read len " << readLen << endl;
+        readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+        memmove(&(package_head[sizeof(my_package)]), buffer, buffer_length);
+        break;
+      }
+      case 5: {
+        readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+        memmove(&(package_head[sizeof(my_package)]), buffer, buffer_length);
+        cout << "received: ip phone " << readLen << endl;
+        break;
+      }
+      case 6: { // 网页浏览
+        if(should_print_log) 
+          cout << "recv port: " << (pack.source_module_id == 100 ? duplex_client_port : duplex_server_port) << endl;
+
+        readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+        memmove(&(package_head[sizeof(my_package)]), buffer, buffer_length);
+
+        if(should_print_log) 
+          cout << "received: 网页流 " << readLen << endl;
+        break;
+      }
+      default: {
+        readLen = recvfrom(recv_socket, buffer, package_size, 0, (sockaddr *)&sender_addr, &sender_addrLen);
+        memmove(&(package_head[sizeof(my_package)]), buffer, buffer_length);
+        break;
+      }
+    }
+  }
+
+  void send_packet(char package_head[], int readLen) {
+    static int my_socket = get_init_socket("0.0.0.0", -1);
+    static sockaddr_in target_addr = get_sockaddr_in(real_address(client_address).c_str(), client_port);
+
+    static uint32_t total_packet_num = 0;
+    total_packet_num++;
+    if(total_packet_num % 100 >= loss_rate) {
+      sendto(my_socket, package_head, readLen+sizeof(my_package), 0, (sockaddr *)&target_addr, sizeof(target_addr));
+    }
+
+    show_current_state(total_packet_num);
   }
 };
 
