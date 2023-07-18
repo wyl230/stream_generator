@@ -2,6 +2,11 @@
 // 短消息 C1：23100 C2：23200 S-C1:23300 S-C2:23400
 #include "header.h"
 #include "json.hpp"
+
+#include "readerwriterqueue/readerwriterqueue.h"
+#include "readerwriterqueue/atomicops.h"
+using namespace moodycamel;
+
 using namespace std;
 using json = nlohmann::json;
 #define RECEIVER_ADDRESS "127.0.0.1"  // 目的地址
@@ -87,6 +92,7 @@ public:
     last_time = get_current_time();
   }
 
+  BlockingReaderWriterQueue<string> data_queue;
   timespec last_time;
   int package_size = 48048, package_speed, delay, report_interval;
   long package_num;
@@ -167,10 +173,11 @@ public:
     set_header();
 
     cout << "传输开始" << endl;
-    std::thread send_t(&Receiver::send_thread, this, 0, package_num, delay, package_size);
-    while (1) {
-      sleep(1);
-    }
+    std::thread send_thread(&Receiver::send_thread, this, 0, package_num, delay, package_size);
+    std::thread process_data_thread(&Receiver::data_reader, this);
+
+    send_thread.join();
+    process_data_thread.join();
   }
 
   int get_init_socket(string address, int port) {
@@ -184,7 +191,7 @@ public:
     my_addr.sin_port = htons(port);
     my_addr.sin_addr.s_addr = inet_addr(address.c_str());
     // 绑定端口
-    bind(my_socket, (sockaddr *)&my_addr, sizeof(my_addr));
+    auto error = bind(my_socket, (sockaddr *)&my_addr, sizeof(my_addr));
     return my_socket;
   }
 
@@ -196,7 +203,7 @@ public:
     return target_addr;
   }
 
-  void print_head_msg(my_package* ptr) {
+  void print_head_msg(const my_package* ptr) {
     if(!should_print_log) 
       return;
     cout << "head: ";
@@ -243,7 +250,7 @@ public:
     msg.total_packet_num++;
   }
 
-  void adjust_packet_id_queue(my_package* ptr) {
+  void adjust_packet_id_queue(const my_package* ptr) {
     cur_num_of_packet_id_allowed++; // 如果超过了，就缩减10% 
     // 添加id序列
     auto &msg = flow_msg[ptr->flow_id];
@@ -270,13 +277,13 @@ public:
     return now;
   }
 
-  void print_timestamp(my_package* ptr) {
+  void print_timestamp(const my_package* ptr) {
     if(!should_print_log) return;
     std::tm tm = *std::localtime(&ptr->timestamp.tv_sec);
     std::cout << "timestamp: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setw(9) << std::setfill('0') << ptr->timestamp.tv_nsec << std::endl;
   }
 
-  void print_msg(my_package* ptr) {
+  void print_msg(const my_package* ptr) {
     if(!should_print_log) return;
     auto &msg = flow_msg[ptr->flow_id];
     cout << "业务id: " << ptr->flow_id << ": delays: max: " << msg.max_delay << ", min: " << msg.min_delay << ", byte_num: " << msg.byte_num << ", packet_num: " << msg.packet_num << endl;
@@ -287,7 +294,7 @@ public:
     
   }
 
-  void update_flow_msg(my_package* ptr, int readLen) {
+  void update_flow_msg(const my_package* ptr, int readLen) {
     // 计算延迟 ns
     auto get_time_diff = [](timespec t1, timespec t2)->double {
       return (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
@@ -338,24 +345,22 @@ public:
 
   int send_thread(int port, long package_num, int delay, int packageSize) {
     // 初始化socket
-    int my_socket = get_init_socket("0.0.0.0", 2222);
+    int my_socket = get_init_socket("0.0.0.0", -1);
     int duplex_socket = get_init_socket("0.0.0.0", 2233);
     // 指定目标
-    sockaddr_in target_addr = get_sockaddr_in(client_address, video_out);
 
     int recv_socket = get_init_socket("0.0.0.0", -1);
     auto recv_addr = get_sockaddr_in("0.0.0.0", server_port);
-    bind(recv_socket, (sockaddr *)&recv_addr, sizeof(recv_addr));
+    auto error = bind(recv_socket, (sockaddr *)&recv_addr, sizeof(recv_addr));
 
     set_bufsize(10 * 1024 * 1024, 10*1024*1024, recv_socket);
     // 接收准备
     sockaddr_in sender_addr;
     socklen_t sender_addrLen = sizeof(sender_addr);
     char buffer[package_size];
-    int readLen = 0;
-    int error = 0;
     // 开始发送
     for (int k = 0; ; k++) {
+      int readLen = 0;
       // 固定化包间间隔
       memset(buffer, 0, sizeof(buffer));
       readLen = recvfrom(recv_socket, buffer, package_size+sizeof(my_package), 0, (sockaddr *)&sender_addr, &sender_addrLen);
@@ -363,46 +368,8 @@ public:
 
       memmove(datagram, &buffer[sizeof(my_package)], readLen - sizeof(my_package));
 
-      // 从buffer中读取时间戳
-      my_package* ptr = reinterpret_cast<my_package*>(buffer); 
-
-      print_head_msg(ptr);
-      print_timestamp(ptr);
-      update_flow_msg(ptr, readLen);
-
-      // cout << ptr->tunnel_id << " send type " << endl;
-      bool from_client = ptr->source_module_id == 100 ? true : false;
-      switch(ptr->tunnel_id) {
-        case 3: { // 短消息
-          cout << "短消息" << endl;
-          receive_web_short_msg(from_client, my_socket, readLen);
-          break;
-        }
-        case 4: { // 纯转发
-          // cout << "纯转发 | 视频流" << endl;
-          // cout << "readLen: " << readLen << endl;
-          receive_video_stream(my_socket, target_addr, readLen);
-          break;
-        }
-        case 5: { // ip电话
-          receive_ip_phone(from_client, my_socket, readLen);
-          break;
-        }
-        case 6: { // 网页
-          receive_web(from_client, my_socket, readLen, false);
-          break;
-        }
-        case 11: {
-          receive_tencent_video(from_client, my_socket, readLen, ptr->tunnel_id);
-        } break;
-        case 12: {
-          receive_tencent_video(from_client, my_socket, readLen, ptr->tunnel_id);
-        } break;
-        case 13: {
-          receive_tencent_video(from_client, my_socket, readLen, ptr->tunnel_id);
-        } break;
-        default: break;
-      }
+      string data(buffer, readLen);
+      data_queue.enqueue(data);
     }
     return 0;
   }
@@ -448,7 +415,7 @@ public:
     // cout << j.dump(4) << endl;
     string message = j.dump();
 
-    auto my_socket = get_init_socket("0.0.0.0", 2222);
+    auto my_socket = get_init_socket("0.0.0.0", -1);
     auto target_addr = get_sockaddr_in(control_address, control_port);
     sendto(my_socket, message.c_str(), message.length(), 0, (sockaddr *)&target_addr, sizeof(target_addr));
   }
@@ -515,6 +482,64 @@ public:
     sockaddr_in duplex_target_addr = get_sockaddr_in(target_address, target_port);
     auto error = sendto(my_socket, datagram, readLen - sizeof(my_package), 0, (sockaddr *)&duplex_target_addr, sizeof(duplex_target_addr));
     if (error == -1) { perror("sendto"); cout <<"sendto() error occurred at package "<< endl; }
+  }
+
+  void process_data(const string& data, int my_socket) {
+
+    int readLen = data.length();
+    // 从buffer中读取时间戳
+    const my_package* ptr = reinterpret_cast<const my_package*>(data.c_str()); 
+
+    print_head_msg(ptr);
+    print_timestamp(ptr);
+    update_flow_msg(ptr, data.size());
+
+    // cout << ptr->tunnel_id << " send type " << endl;
+    bool from_client = ptr->source_module_id == 100 ? true : false;
+    switch(ptr->tunnel_id) {
+      case 3: { // 短消息
+        cout << "短消息" << endl;
+        receive_web_short_msg(from_client, my_socket, readLen);
+        break;
+      }
+      case 4: { // 纯转发
+        // cout << "纯转发 | 视频流" << endl;
+        // cout << "readLen: " << readLen << endl;
+
+        sockaddr_in target_addr = get_sockaddr_in(client_address, video_out);
+        receive_video_stream(my_socket, target_addr, readLen);
+        break;
+      }
+      case 5: { // ip电话
+        receive_ip_phone(from_client, my_socket, readLen);
+        break;
+      }
+      case 6: { // 网页
+        receive_web(from_client, my_socket, readLen, false);
+        break;
+      }
+      case 11: {
+        receive_tencent_video(from_client, my_socket, readLen, ptr->tunnel_id);
+      } break;
+      case 12: {
+        receive_tencent_video(from_client, my_socket, readLen, ptr->tunnel_id);
+      } break;
+      case 13: {
+        receive_tencent_video(from_client, my_socket, readLen, ptr->tunnel_id);
+      } break;
+      default: break;
+    }
+  }
+
+  void data_reader() {
+
+    string data;
+    auto my_socket = get_init_socket("0.0.0.0", -1);
+    while(true) {
+        // Fully-blocking:
+        data_queue.wait_dequeue(data);
+        process_data(data, my_socket);
+    }
   }
 
 };
